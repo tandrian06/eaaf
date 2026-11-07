@@ -1,0 +1,5 @@
+FROM python:3.12-slim
+WORKDIR /app
+RUN --mount=type=cache,target=/root/.cache/pip pip install --timeout 90 "litellm[proxy]==1.106.7"
+USER 65532:65532
+ENTRYPOINT ["litellm"]

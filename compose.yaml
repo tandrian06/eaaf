@@ -1,0 +1,64 @@
+services:
+  gateway:
+    build: .
+    command: [python, -m, uvicorn, eaaf.gateway:app, --host, 0.0.0.0, --port, "8000"]
+    environment:
+      LITELLM_BASE_URL: http://litellm:4000
+      EAAF_USAGE_DB: /data/usage.sqlite3
+      EAAF_HR_API_KEY: "${EAAF_HR_API_KEY:-eaaf-local-hr}"
+      EAAF_IT_API_KEY: "${EAAF_IT_API_KEY:-eaaf-local-it}"
+      EAAF_MARKETING_API_KEY: "${EAAF_MARKETING_API_KEY:-eaaf-local-marketing}"
+    volumes:
+      - ./config/applications.yaml:/app/config/applications.yaml:ro
+      - usage:/data
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks: [frontend, backend]
+    depends_on:
+      litellm:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+  litellm:
+    build:
+      context: .
+      dockerfile: Dockerfile.litellm
+    command: ["--config", /app/eaaf-config.yaml, "--host", 0.0.0.0, "--port", "4000"]
+    environment:
+      MOCK_API_BASE: http://mock-provider:8000/v1
+      LITELLM_LOCAL_MODEL_COST_MAP: "True"
+      DO_NOT_TRACK: "1"
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ./config/litellm.yaml:/app/eaaf-config.yaml:ro
+    networks: [backend]
+    depends_on:
+      mock-provider:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python3, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/readiness')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mock-provider:
+    build: .
+    command: [python, -m, uvicorn, eaaf.mock_provider:app, --host, 0.0.0.0, --port, "8000"]
+    networks: [backend]
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 3s
+      timeout: 2s
+      retries: 15
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  usage:

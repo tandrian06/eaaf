@@ -1,0 +1,6 @@
+.venv/
+.local-deps/
+__pycache__/
+.pytest_cache/
+.env
+usage.sqlite3*

@@ -1,0 +1,25 @@
+applications:
+  hr:
+    domain: Human Resources
+    cost_center: DEMO-HR
+    key_env: EAAF_HR_API_KEY
+    allowed_models: [eaaf-mock]
+    requests_per_day: 20
+    monthly_budget_cents: 100
+    request_cost_cents: 2
+  it:
+    domain: Information Technology
+    cost_center: DEMO-IT
+    key_env: EAAF_IT_API_KEY
+    allowed_models: [eaaf-mock, eaaf-mock-extended]
+    requests_per_day: 100
+    monthly_budget_cents: 1000
+    request_cost_cents: 2
+  marketing:
+    domain: Marketing
+    cost_center: DEMO-MKT
+    key_env: EAAF_MARKETING_API_KEY
+    allowed_models: [eaaf-mock-extended]
+    requests_per_day: 50
+    monthly_budget_cents: 200
+    request_cost_cents: 2

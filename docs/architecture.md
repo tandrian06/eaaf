@@ -28,3 +28,11 @@ SQLite stores timestamps, application identifiers, domain, cost center, permitte
 The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
 
 RAG and agent clients can share the same gateway boundary. Each new capability can extend the client contract and governance policies independently of the provider deployment.
+
+## AI for DevOps integration
+
+[AI for DevOps](https://github.com/tandrian06/eaaf-devops) is the AWS-first Architecture-to-Terraform module. It owns the versioned architecture schema, ECS Fargate pattern validation, and review output. A structured YAML manifest can be reviewed entirely within the DevOps CLI.
+
+For natural-language intake, the CLI calls `POST /v1/chat/completions` with a dedicated application key. The DevOps repository supplies an optional Compose overlay that registers the DevOps application policy and its architecture model alias. The Gateway authenticates the request, enforces the allowlist and usage limits, and records audit metadata. LiteLLM routes the authorized request to OpenAI. The CLI validates the resulting draft and reports open decisions and pattern conflicts.
+
+Terraform generation and AWS sandbox planning are future DevOps increments. Applying a plan requires a separate approval.

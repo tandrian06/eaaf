@@ -11,12 +11,14 @@ flowchart LR
     Chat["Chat App"] --> Gateway["Governance Gateway · Trust Layer"]
     RAG["RAG Application · planned"] -.-> Gateway
     Agents["Agent Runtime · planned"] -.-> Gateway
+    DevOps["AI for DevOps · AWS architecture intake"] -->|HTTP API · dedicated identity| Gateway
     Apps["Other enterprise clients"] -.-> Gateway
 
     Policies["Application policies"] --> Gateway
     Gateway --> Audit["Usage and decision audit"]
     Gateway -->|Authorized model alias| Switcher["Model Switcher · LiteLLM Proxy"]
     Switcher --> Mock["Simulated provider"]
+    Switcher -->|Optional configuration| OpenAI["OpenAI"]
     Switcher -.-> Providers["Additional model providers · planned"]
 
     RAG -.-> Knowledge["Document index and retrieval · planned"]
@@ -35,7 +37,9 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
-Sprint 3 and Sprint 4 describe the intended sequence. The current API supports non-streaming text chat completions.
+| **AI for DevOps** | Draft and validate AWS ECS Fargate architecture manifests. Natural-language intake uses the Core Gateway through a dedicated application identity. | **Separate module · intake available.** Terraform generation and AWS sandbox planning are planned. |
+
+AI for DevOps follows its own delivery roadmap in a [separate repository](https://github.com/tandrian06/eaaf-devops). The DevOps checkout supplies the optional local Compose overlay. The standalone YAML validator runs independently of Core. Sprint 3 and Sprint 4 describe the intended Core sequence. The current API supports non-streaming text chat completions.
 
 ## How we build and validate EAAF
 

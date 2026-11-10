@@ -30,7 +30,7 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | Component | Role | Delivery |
 | --- | --- | --- |
 | **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
-| **Model Switcher** | LiteLLM Proxy resolves a requested model alias to a provider. The demo routes two aliases to one mock provider. | **Sprint 1 · alias routing available.** Additional providers and routing policies are future work. |
+| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for IT. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
 | **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
@@ -73,9 +73,9 @@ The setup script generates unique keys in the Git-ignored `.env` file. If local 
 The root URL opens Global. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
 
 1. Open [HR Chat](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
-2. Select `eaaf-mock` and send a message. The simulated provider replies with `Hello from the EAAF mock provider.`
-3. Keep the HR key, switch to `eaaf-mock-extended`, and send a message. The Gateway returns **HTTP 403** and the Chat app keeps your draft.
-4. Open **IT** from the navigation, enter `EAAF_IT_API_KEY`, select the same extended model, and send a new message. The Gateway allows the request.
+2. Send a message with the preselected `eaaf-mock-hr`. The provider replies with `Hello from the EAAF HR mock (eaaf-mock-hr). This response is simulated.`
+3. Open **IT**, enter its key, and send a message. The default `eaaf-mock-it` identifies itself as the IT mock. Global and Marketing likewise identify their own mocks.
+4. To see a policy denial, paste the HR key into IT Chat and send a message. The Gateway returns **HTTP 403** and keeps the draft.
 
 Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
 
@@ -84,13 +84,13 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |
 | --- | --- | ---: | ---: |
 | Global | `eaaf-mock` | 50 | $3.00 |
-| HR | `eaaf-mock` | 20 | $1.00 |
-| IT | `eaaf-mock`, `eaaf-mock-extended` | 100 | $10.00 |
-| Marketing | `eaaf-mock-extended` | 50 | $2.00 |
+| HR | `eaaf-mock-hr` | 20 | $1.00 |
+| IT | `eaaf-mock-it`, `eaaf-openai-mini` (optional) | 100 | $10.00 |
+| Marketing | `eaaf-mock-marketing` | 50 | $2.00 |
 
 [Application profiles](config/applications.yaml) reference the Chat keys by environment variable. The Gateway and LiteLLM share `LITELLM_MASTER_KEY` for their internal connection. `EAAF_MOCK_API_KEY` supplies the value expected by the OpenAI-compatible adapter for the local mock. Recreate the affected services after changing keys.
 
-To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose **Authorize**, enter an application key from `.env`, and call `POST /v1/chat/completions`.
+To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose **Authorize**, enter the Global key from `.env`, and call `POST /v1/chat/completions`.
 
 ```json
 {

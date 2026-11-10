@@ -68,6 +68,9 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         config_path = Path(os.environ.get("EAAF_APPLICATIONS_CONFIG", DEFAULT_APPLICATIONS))
         app.state.applications = load_applications(config_path)
+        app.state.chat_spaces = {
+            application.name: application.policy for application in app.state.applications.values()
+        }
         app.state.openai_enabled = os.environ.get("EAAF_OPENAI_ENABLED") == "true"
         proxy_key = os.environ["LITELLM_MASTER_KEY"]
         if not proxy_key.startswith("sk-") or len(proxy_key) <= 3:
@@ -94,7 +97,7 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     @app.get("/chat/{space}", include_in_schema=False, response_model=None)
     async def chat(space: str, request: Request) -> FileResponse | RedirectResponse:
         canonical = space.lower()
-        if not any(profile.name == canonical for profile in request.app.state.applications.values()):
+        if canonical not in request.app.state.chat_spaces:
             raise HTTPException(404, "Chat space not found")
         if space != canonical:
             return RedirectResponse(f"/chat/{canonical}")
@@ -118,10 +121,17 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/chat-options", include_in_schema=False)
-    async def chat_options(request: Request) -> JSONResponse:
-        models = [OPENAI_ALIAS] if request.app.state.openai_enabled else []
-        return JSONResponse({"additional_models": models}, headers={"Cache-Control": "no-store"})
+    @app.get("/chat/{space}/options", include_in_schema=False)
+    async def chat_options(space: str, request: Request) -> JSONResponse:
+        policy = request.app.state.chat_spaces.get(space.lower())
+        if policy is None:
+            raise HTTPException(404, "Chat space not found")
+        models = [
+            {"id": alias, "external": alias == OPENAI_ALIAS}
+            for alias in sorted(policy.allowed_models)
+            if alias != OPENAI_ALIAS or request.app.state.openai_enabled
+        ]
+        return JSONResponse({"models": models}, headers={"Cache-Control": "no-store"})
 
     @app.post("/chat/{space}/completions", include_in_schema=False)
     @app.post("/v1/chat/completions")

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from eaaf.gateway import create_app
 
-BODY = {"model": "eaaf-mock", "messages": [{"role": "user", "content": "Hello"}]}
+BODY = {"model": "eaaf-mock-hr", "messages": [{"role": "user", "content": "Hello"}]}
 HR_HEADERS = {"Authorization": "Bearer test-hr"}
 
 
@@ -48,7 +48,9 @@ def test_openai_alias_requires_opt_in_and_it_policy(monkeypatch, enabled, applic
         return httpx.Response(200, json={"object": "chat.completion"})
 
     with TestClient(create_app(httpx.MockTransport(proxy))) as client:
-        assert client.get("/chat-options").json()["additional_models"] == ([alias] if enabled else [])
+        models = client.get("/chat/it/options").json()["models"]
+        assert models[0] == {"id": "eaaf-mock-it", "external": False}
+        assert any(entry["id"] == alias for entry in models) == enabled
         response = client.post(
             f"/chat/{application}/completions",
             json={**BODY, "model": alias},
@@ -112,7 +114,7 @@ def test_rejects_unauthenticated_requests_before_routing(authorization):
     assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
-@pytest.mark.parametrize("model", ["eaaf-mock-extended", "unknown"])
+@pytest.mark.parametrize("model", ["eaaf-mock-it", "unknown"])
 def test_rejects_forbidden_models_before_routing(model):
     def proxy(request):
         pytest.fail("Forbidden request reached the proxy")
@@ -154,7 +156,7 @@ def test_limit_blocks_before_routing_and_survives_restart(limits, detail):
 
 
 def test_audit_retains_metadata_and_excludes_request_and_response_content():
-    body = {"model": "eaaf-mock", "messages": [{"role": "user", "content": "private-prompt-marker"}]}
+    body = {"model": "eaaf-mock-hr", "messages": [{"role": "user", "content": "private-prompt-marker"}]}
 
     def proxy(request):
         return httpx.Response(200, json={
@@ -176,7 +178,7 @@ def test_audit_retains_metadata_and_excludes_request_and_response_content():
             FROM events ORDER BY id
         """).fetchall()
     assert rows == [
-        ("hr", "DEMO-HR", "eaaf-mock", "completed", 200, 2, 13),
+        ("hr", "DEMO-HR", "eaaf-mock-hr", "completed", 200, 2, 13),
         (None, None, None, "unauthenticated", 401, 0, None),
         ("hr", "DEMO-HR", None, "model_forbidden", 403, 0, None),
     ]

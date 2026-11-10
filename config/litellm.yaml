@@ -1,12 +1,23 @@
 model_list:
   - model_name: eaaf-mock
-    litellm_params: &mock_deployment
-      model: openai/eaaf-mock-backend
-      api_base: os.environ/MOCK_API_BASE
-      api_key: os.environ/EAAF_MOCK_API_KEY
-      timeout: 10
-  - model_name: eaaf-mock-extended
-    litellm_params: *mock_deployment
+    litellm_params:
+      <<: &mock_defaults
+        api_base: os.environ/MOCK_API_BASE
+        api_key: os.environ/EAAF_MOCK_API_KEY
+        timeout: 10
+      model: openai/eaaf-mock
+  - model_name: eaaf-mock-hr
+    litellm_params:
+      <<: *mock_defaults
+      model: openai/eaaf-mock-hr
+  - model_name: eaaf-mock-it
+    litellm_params:
+      <<: *mock_defaults
+      model: openai/eaaf-mock-it
+  - model_name: eaaf-mock-marketing
+    litellm_params:
+      <<: *mock_defaults
+      model: openai/eaaf-mock-marketing
 router_settings:
   num_retries: 0
 general_settings:

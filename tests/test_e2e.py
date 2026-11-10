@@ -5,6 +5,18 @@ import pytest
 
 
 @pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
+def test_chat_page_and_assets_are_served():
+    with httpx.Client(base_url=os.environ["EAAF_E2E_URL"], trust_env=False) as client:
+        page = client.get("/")
+        assert page.status_code == 200
+        assert "<title>EAAF Chat" in page.text
+        assert "connect-src 'self'" in page.headers["Content-Security-Policy"]
+        for path in ("/chat-assets/chat.css", "/chat-assets/chat.js"):
+            assert path in page.text
+            assert client.get(path).status_code == 200
+
+
+@pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
 @pytest.mark.parametrize("application, model, status", [
     ("hr", "eaaf-mock", 200),
     ("hr", "eaaf-mock-extended", 403),

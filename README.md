@@ -2,6 +2,14 @@
 
 EAAF (Enterprise Agentic AI Framework) is a local-first gateway for enterprise AI applications. The gateway provides a common entry point intended for future Chat, RAG, and agent workloads.
 
+## Sprint 2 · Local Chat demo
+
+Start the Compose stack below and open [EAAF Chat](http://127.0.0.1:8000/). Choose **HR**, select `eaaf-mock`, and send a message. The reply comes from the simulated provider through EAAF and LiteLLM. Send a follow-up to include the previous turns, or select **New chat** to clear the conversation.
+
+To demonstrate policy enforcement, keep the HR key, select `eaaf-mock-extended`, and send a message. The gateway returns HTTP 403 and the draft remains available. Switch back to the allowed model to retry. The application buttons use the default Compose demo keys. If you override a key, enter its value manually.
+
+The browser sends the conversation and application key to the local gateway. The page keeps both in memory and clears the conversation when the key changes. The provider returns fixed text, so this demo shows the request path and policy decisions.
+
 ## Sprint 1 · Increment 3
 
 A non-streaming text request goes through the FastAPI gateway and a separate LiteLLM Proxy to a deterministic OpenAI-compatible mock provider. Both model aliases use that provider and return fixed content and simulated token counts.

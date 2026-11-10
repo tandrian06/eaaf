@@ -7,14 +7,16 @@ from typing import Annotated, Literal
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Security
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from eaaf.policies import Application, authenticate, load_applications
 from eaaf.usage import usage_store
 
 DEFAULT_APPLICATIONS = Path(__file__).resolve().parents[1] / "config" / "applications.yaml"
+CHAT_ASSETS = Path(__file__).resolve().parent / "chat"
 application_bearer = HTTPBearer(auto_error=False, scheme_name="Application key")
 
 
@@ -78,6 +80,20 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
             yield
 
     app = FastAPI(title="EAAF Governance Gateway", lifespan=lifespan)
+    app.mount("/chat-assets", StaticFiles(directory=CHAT_ASSETS), name="chat-assets")
+
+    @app.get("/", include_in_schema=False)
+    async def chat() -> FileResponse:
+        return FileResponse(
+            CHAT_ASSETS / "index.html",
+            headers={
+                "Content-Security-Policy": (
+                    "default-src 'none'; script-src 'self'; style-src 'self'; "
+                    "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+                ),
+                "Referrer-Policy": "no-referrer",
+            },
+        )
 
     @app.exception_handler(sqlite3.Error)
     async def usage_unavailable(request: Request, exc: sqlite3.Error) -> JSONResponse:

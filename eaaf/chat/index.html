@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EAAF Chat · Local demo</title>
+  <link rel="stylesheet" href="/chat-assets/chat.css">
+  <script src="/chat-assets/chat.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">EAAF <span>Chat</span></a>
+    <span class="badge">Local demo</span>
+  </header>
+  <main class="layout">
+    <aside class="settings" aria-label="Gateway settings">
+      <p class="eyebrow">Gateway settings</p>
+      <h2>Application access</h2>
+      <label for="application-key">Application key</label>
+      <input id="application-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a bearer token">
+      <p class="muted" id="demo-help">Use a key from the local Compose demo.</p>
+      <div class="profiles" role="group" aria-label="Load demo keys" aria-describedby="demo-help">
+        <button type="button" data-demo-key="eaaf-local-hr">HR</button>
+        <button type="button" data-demo-key="eaaf-local-it">IT</button>
+        <button type="button" data-demo-key="eaaf-local-marketing">Marketing</button>
+      </div>
+      <label for="model">Model</label>
+      <select id="model">
+        <option>eaaf-mock</option>
+        <option>eaaf-mock-extended</option>
+      </select>
+      <p class="muted">Try HR with either model to see an allowed request and a policy denial.</p>
+      <div class="note">This page keeps the conversation and key in memory. Requests go to the local gateway. Changing the key starts a new conversation.</div>
+    </aside>
+    <section class="chat" aria-labelledby="chat-title">
+      <div class="chat-heading">
+        <div>
+          <p class="eyebrow">Governed chat</p>
+          <h1 id="chat-title">Conversation</h1>
+        </div>
+        <button id="new-chat" type="button">New chat</button>
+      </div>
+      <p id="empty-state" class="empty">Send a message to see how EAAF handles it. The simulated provider returns a fixed reply.</p>
+      <ol id="messages" class="messages" aria-label="Conversation messages" aria-live="polite"></ol>
+      <div class="composer">
+        <p id="status" class="status" role="status"></p>
+        <p id="error" class="error" role="alert" hidden></p>
+        <form id="composer">
+          <label for="message">Your message</label>
+          <textarea id="message" rows="3" placeholder="Try: Hello, EAAF." required></textarea>
+          <button id="send" class="primary" type="submit">Send message</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

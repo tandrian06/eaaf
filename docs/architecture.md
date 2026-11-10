@@ -23,4 +23,8 @@ After authentication and model authorization, the gateway checks the daily quota
 
 SQLite stores timestamps, application identifiers, domain, cost center, permitted model aliases, decisions, status codes, simulated cost, and reported token totals when available. Authentication failures carry no application identity. Model denials omit the raw requested alias. Request bodies, response bodies, and credentials are excluded. Framework request-validation errors are outside the decision audit. A storage failure returns HTTP 503. If it occurs before dispatch, LiteLLM is never called.
 
-Future Chat, RAG, and agent clients can share the same gateway boundary. Each new capability can extend the client contract and governance policies independently of the provider deployment.
+## Sprint 2 Chat client
+
+The gateway serves the Chat page and its static assets. The browser calls the same `POST /v1/chat/completions` endpoint as other clients. The application key and accepted conversation turns are held in page memory. A new request sends the accepted turns and the new message. Changing credentials clears the conversation. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
+
+RAG and agent clients can share the same gateway boundary. Each new capability can extend the client contract and governance policies independently of the provider deployment.

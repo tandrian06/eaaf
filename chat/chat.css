@@ -68,9 +68,36 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   border-radius: 999px;
   font-size: .85rem;
 }
-.layout {
+.page {
   width: min(1120px, calc(100% - 40px));
   margin: 28px auto;
+}
+.page-heading { margin-bottom: 18px; }
+.page-heading .muted { font-size: 1rem; }
+.back-link { display: inline-block; color: var(--accent); font-weight: 650; margin-bottom: 12px; }
+.department-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.department-card {
+  display: grid;
+  gap: 2px;
+  background: #fff;
+  color: var(--card-color, var(--accent));
+  border: 1px solid var(--line);
+  border-left: 4px solid currentColor;
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-decoration: none;
+}
+.department-card:hover { background: var(--tint); }
+.department-card span { color: var(--muted); font-size: .86rem; }
+.department-card[data-space="hr"] { --card-color: #176348; }
+.department-card[data-space="it"] { --card-color: #59418e; }
+.department-card[data-space="marketing"] { --card-color: #9b3658; }
+.layout {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   gap: 20px;
@@ -117,9 +144,6 @@ button {
 }
 button:hover:not(:disabled) { background: var(--tint); }
 .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.spaces { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
-.spaces a { color: var(--accent); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; text-decoration: none; }
-.spaces a[aria-current="page"] { background: var(--accent); color: #fff; }
 .empty { color: var(--muted); background: var(--canvas); border-radius: 10px; padding: 16px; margin: 20px 0 0; }
 .messages { list-style: none; padding: 0; margin: 20px 0 0; }
 .message { margin-top: 10px; padding: 10px 14px; border-radius: 10px; overflow-wrap: anywhere; }
@@ -135,6 +159,7 @@ button:hover:not(:disabled) { background: var(--tint); }
 .primary:hover:not(:disabled) { background: var(--accent-hover); }
 
 @media (max-width: 680px) {
-  .layout { grid-template-columns: minmax(0, 1fr); width: calc(100% - 24px); margin: 12px auto; gap: 12px; }
+  .page { width: calc(100% - 24px); margin: 12px auto; }
+  .layout, .department-links { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .settings, .chat { padding: 16px; }
 }

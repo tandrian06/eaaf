@@ -25,12 +25,19 @@ fetch(`${spacePath}/options`)
   .catch(() => {
     setError("Could not load models for this space. Reload the page to try again.");
   });
-document.documentElement.dataset.chatSpace = spacePath.split("/").at(-1);
-for (const link of document.querySelectorAll(".spaces a")) {
-  if (link.getAttribute("href") === spacePath) {
-    link.setAttribute("aria-current", "page");
-    document.querySelector("#chat-title").textContent = `${link.textContent} Chat`;
-  }
+const space = spacePath.split("/").at(-1);
+document.documentElement.dataset.chatSpace = space;
+if (space === "global") {
+  document.querySelector("#portal-intro").hidden = false;
+  document.querySelector("#departments").hidden = false;
+} else {
+  const department = [...document.querySelectorAll(".department-card")]
+    .find((link) => link.dataset.space === space);
+  const title = `${department?.dataset.label ?? space} Chat`;
+  document.querySelector("#page-title").textContent = title;
+  document.querySelector("#chat-title").textContent = "Conversation";
+  document.querySelector("#back-to-portal").hidden = false;
+  document.title = `${title} · EAAF`;
 }
 window.addEventListener("pagehide", () => {
   activeRequest?.abort();

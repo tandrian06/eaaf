@@ -70,7 +70,7 @@ The setup script generates unique keys in the Git-ignored `.env` file. If local 
 | IT | [`/chat/it`](http://127.0.0.1:8000/chat/it) | `EAAF_IT_API_KEY` |
 | Marketing | [`/chat/marketing`](http://127.0.0.1:8000/chat/marketing) | `EAAF_MARKETING_API_KEY` |
 
-The root URL opens Global. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
+The root URL opens the EAAF portal with Global Chat and links to the department chats. Each department has a link back to the portal. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
 
 1. Open [HR Chat](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
 2. Send a message with the preselected `eaaf-mock-hr`. The provider replies with `Hello from the EAAF HR mock (eaaf-mock-hr). This response is simulated.`

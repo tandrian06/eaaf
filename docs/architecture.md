@@ -12,7 +12,7 @@ flowchart LR
 ```
 
 - **EAAF Gateway** loads the HR, IT, and Marketing profiles from `config/applications.yaml` at startup. It authenticates the application key and checks the requested alias against that application's allowlist before routing. It forwards only supported request fields and uses its own proxy credential. It returns 502 for upstream failures and 504 for timeouts.
-- **LiteLLM Proxy** maps `eaaf-mock` and `eaaf-mock-extended` to the same mock deployment using `config/litellm.yaml`. It runs as a separate service. The checked-in credentials are fixed local placeholders for the demo.
+- **LiteLLM Proxy** maps `eaaf-mock` and `eaaf-mock-extended` to the same mock deployment using `config/litellm.yaml`. It runs as a separate service. The Gateway and Proxy share a master key supplied through their runtime environment. Local keys are generated in the Git-ignored `.env` file.
 - **Mock LLM Provider** generates a unique completion ID, fixed text, and fixed simulated token counts. It does not need any model weights or external services.
 
 Compose exposes only the gateway on `127.0.0.1:8000`. LiteLLM and the mock are reachable on an internal Compose network. The gateway health endpoint reports process availability. The end-to-end test verifies all three services together.
@@ -25,6 +25,6 @@ SQLite stores timestamps, application identifiers, domain, cost center, permitte
 
 ## Sprint 2 Chat client
 
-The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. The gateway serves the Chat page and its static assets. The browser calls the same `POST /v1/chat/completions` endpoint as other clients. The application key and accepted conversation turns are held in page memory. A new request sends the accepted turns and the new message. Changing credentials clears the conversation. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
+The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
 
 RAG and agent clients can share the same gateway boundary. Each new capability can extend the client contract and governance policies independently of the provider deployment.

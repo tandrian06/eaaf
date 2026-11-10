@@ -5,9 +5,11 @@ services:
     environment:
       LITELLM_BASE_URL: http://litellm:4000
       EAAF_USAGE_DB: /data/usage.sqlite3
-      EAAF_HR_API_KEY: "${EAAF_HR_API_KEY:-eaaf-local-hr}"
-      EAAF_IT_API_KEY: "${EAAF_IT_API_KEY:-eaaf-local-it}"
-      EAAF_MARKETING_API_KEY: "${EAAF_MARKETING_API_KEY:-eaaf-local-marketing}"
+      EAAF_GLOBAL_API_KEY: "${EAAF_GLOBAL_API_KEY:?Set EAAF_GLOBAL_API_KEY}"
+      EAAF_HR_API_KEY: "${EAAF_HR_API_KEY:?Set EAAF_HR_API_KEY}"
+      EAAF_IT_API_KEY: "${EAAF_IT_API_KEY:?Set EAAF_IT_API_KEY}"
+      EAAF_MARKETING_API_KEY: "${EAAF_MARKETING_API_KEY:?Set EAAF_MARKETING_API_KEY}"
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}"
     volumes:
       - ./config/applications.yaml:/app/config/applications.yaml:ro
       - usage:/data
@@ -30,6 +32,8 @@ services:
     command: ["--config", /app/eaaf-config.yaml, "--host", 0.0.0.0, "--port", "4000"]
     environment:
       MOCK_API_BASE: http://mock-provider:8000/v1
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}"
+      EAAF_MOCK_API_KEY: "${EAAF_MOCK_API_KEY:?Set EAAF_MOCK_API_KEY}"
       LITELLM_LOCAL_MODEL_COST_MAP: "True"
       DO_NOT_TRACK: "1"
       HF_HUB_OFFLINE: "1"

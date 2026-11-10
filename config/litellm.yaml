@@ -3,13 +3,13 @@ model_list:
     litellm_params: &mock_deployment
       model: openai/eaaf-mock-backend
       api_base: os.environ/MOCK_API_BASE
-      api_key: sk-eaaf-local-placeholder
+      api_key: os.environ/EAAF_MOCK_API_KEY
       timeout: 10
   - model_name: eaaf-mock-extended
     litellm_params: *mock_deployment
 router_settings:
   num_retries: 0
 general_settings:
-  master_key: sk-eaaf-local-proxy
+  master_key: os.environ/LITELLM_MASTER_KEY
 litellm_settings:
   turn_off_message_logging: true

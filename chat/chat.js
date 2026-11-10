@@ -8,11 +8,24 @@ const statusLine = document.querySelector("#status");
 const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
-const profiles = document.querySelectorAll("[data-demo-key]");
+const spacePath = window.location.pathname;
+document.documentElement.dataset.chatSpace = spacePath.split("/").at(-1);
+for (const link of document.querySelectorAll(".spaces a")) {
+  if (link.getAttribute("href") === spacePath) {
+    link.setAttribute("aria-current", "page");
+    document.querySelector("#chat-title").textContent = `${link.textContent} Chat`;
+  }
+}
+window.addEventListener("pagehide", () => {
+  activeRequest?.abort();
+  keyInput.value = "";
+  syncKey();
+});
 
 let history = [];
 let conversationKey = "";
 let pending = false;
+let activeRequest = null;
 
 function setError(message = "") {
   errorLine.hidden = !message;
@@ -38,7 +51,7 @@ function syncKey() {
 
 function setPending(value) {
   pending = value;
-  for (const control of [keyInput, model, messageInput, newChat, send, ...profiles]) {
+  for (const control of [keyInput, model, messageInput, newChat, send]) {
     control.disabled = value;
   }
 }
@@ -55,12 +68,6 @@ function appendMessage({ role, content }) {
 }
 
 keyInput.addEventListener("input", syncKey);
-for (const button of profiles) {
-  button.addEventListener("click", () => {
-    keyInput.value = button.dataset.demoKey;
-    syncKey();
-  });
-}
 newChat.addEventListener("click", () => {
   clearConversation();
   messageInput.value = "";
@@ -81,7 +88,7 @@ form.addEventListener("submit", async (event) => {
     statusLine.textContent = "";
   }
   if (!key) {
-    setError("Enter an application key or choose a demo application.");
+    setError("Enter an application key.");
     keyInput.focus();
     return;
   }
@@ -93,18 +100,22 @@ form.addEventListener("submit", async (event) => {
 
   const userMessage = { role: "user", content };
   const requestedModel = model.value;
+  const request = new AbortController();
+  activeRequest = request;
   setPending(true);
   statusLine.textContent = "Waiting for the gateway…";
 
   try {
-    const response = await fetch("/v1/chat/completions", {
+    const response = await fetch(`${spacePath}/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({ model: requestedModel, messages: [...history, userMessage] }),
       cache: "no-store",
       redirect: "error",
+      signal: request.signal,
     });
     const result = await response.json().catch(() => null);
+    if (request.signal.aborted) return;
     if (!response.ok) {
       const detail = typeof result?.detail === "string" ? result.detail : "Gateway request failed";
       setError(`HTTP ${response.status} · ${detail}`);
@@ -123,8 +134,11 @@ form.addEventListener("submit", async (event) => {
     messageInput.value = "";
     statusLine.textContent = `HTTP ${response.status} · ${requestedModel}`;
   } catch {
-    setError("Could not reach the gateway. Check that the local stack is running.");
+    if (!request.signal.aborted) {
+      setError("Could not reach the gateway. Check that the local stack is running.");
+    }
   } finally {
+    activeRequest = null;
     if (errorLine.textContent) statusLine.textContent = "";
     setPending(false);
     messageInput.focus();

@@ -18,28 +18,29 @@
       <h2>Application access</h2>
       <label for="application-key">Application key</label>
       <input id="application-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a bearer token">
-      <p class="muted" id="demo-help">Use a key from the local Compose demo.</p>
-      <div class="profiles" role="group" aria-label="Load demo keys" aria-describedby="demo-help">
-        <button type="button" data-demo-key="eaaf-local-hr">HR</button>
-        <button type="button" data-demo-key="eaaf-local-it">IT</button>
-        <button type="button" data-demo-key="eaaf-local-marketing">Marketing</button>
-      </div>
+      <p class="muted">Paste the key for this space from your local .env file.</p>
       <label for="model">Model</label>
       <select id="model">
         <option>eaaf-mock</option>
         <option>eaaf-mock-extended</option>
       </select>
-      <p class="muted">Try HR with either model to see an allowed request and a policy denial.</p>
+      <p class="muted">Model access depends on the policy for this space.</p>
       <div class="note">This page keeps the conversation and key in memory. Requests go to the local gateway. Changing the key starts a new conversation.</div>
     </aside>
     <section class="chat" aria-labelledby="chat-title">
       <div class="chat-heading">
         <div>
           <p class="eyebrow">Governed chat</p>
-          <h1 id="chat-title">Conversation</h1>
+          <h1 id="chat-title">Chat</h1>
         </div>
         <button id="new-chat" type="button">New chat</button>
       </div>
+      <nav class="spaces" aria-label="Chat spaces">
+        <a href="/chat/global">Global</a>
+        <a href="/chat/hr">HR</a>
+        <a href="/chat/it">IT</a>
+        <a href="/chat/marketing">Marketing</a>
+      </nav>
       <p id="empty-state" class="empty">Send a message to see how EAAF handles it. The simulated provider returns a fixed reply.</p>
       <ol id="messages" class="messages" aria-label="Conversation messages" aria-live="polite"></ol>
       <div class="composer">

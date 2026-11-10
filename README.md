@@ -1,68 +1,131 @@
-# EAAF Governance Gateway
+# EAAF · Enterprise Agentic AI Framework
 
-EAAF (Enterprise Agentic AI Framework) is a local-first gateway for enterprise AI applications. The gateway provides a common entry point intended for future Chat, RAG, and agent workloads.
+EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-## Sprint 2 · Local Chat demo
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a browser Chat app. It runs against a simulated provider with Docker Compose.
 
-Start the Compose stack below and open [EAAF Chat](http://127.0.0.1:8000/). Choose **HR**, select `eaaf-mock`, and send a message. The reply comes from the simulated provider through EAAF and LiteLLM. Send a follow-up to include the previous turns, or select **New chat** to clear the conversation.
+## Target architecture
 
-To demonstrate policy enforcement, keep the HR key, select `eaaf-mock-extended`, and send a message. The gateway returns HTTP 403 and the draft remains available. Switch back to the allowed model to retry. The application buttons use the default Compose demo keys. If you override a key, enter its value manually.
+```mermaid
+flowchart LR
+    Chat["Chat App"] --> Gateway["Governance Gateway · Trust Layer"]
+    RAG["RAG Application · planned"] -.-> Gateway
+    Agents["Agent Runtime · planned"] -.-> Gateway
+    Apps["Other enterprise clients"] -.-> Gateway
 
-The browser sends the conversation and application key to the local gateway. The page keeps both in memory and clears the conversation when the key changes. The provider returns fixed text, so this demo shows the request path and policy decisions.
+    Policies["Application policies"] --> Gateway
+    Gateway --> Audit["Usage and decision audit"]
+    Gateway -->|Authorized model alias| Switcher["Model Switcher · LiteLLM Proxy"]
+    Switcher --> Mock["Simulated provider"]
+    Switcher -.-> Providers["Additional model providers · planned"]
 
-## Sprint 1 · Increment 3
+    RAG -.-> Knowledge["Document index and retrieval · planned"]
+    Agents -.-> Tools["Controlled tools and workflows · planned"]
+```
 
-A non-streaming text request goes through the FastAPI gateway and a separate LiteLLM Proxy to a deterministic OpenAI-compatible mock provider. Both model aliases use that provider and return fixed content and simulated token counts.
+Solid lines show the components wired together in the local demo. Dashed lines show the intended extensions. The Gateway controls which application may call which model and under what limits. The Model Switcher resolves the authorized alias to a provider. RAG retrieval and agent tool execution belong to their respective components, with their own access controls.
 
-The gateway is bound to loopback in Compose. Use synthetic input and the local demo credentials below. Runtime inference is local and uses no cloud credentials. The initial image pulls and dependency installation require registry access.
+## Components and sprint roadmap
 
-| Application | Demo bearer token | Allowed models | Requests per UTC day | Simulated USD budget per UTC month |
-| --- | --- | --- | ---: | ---: |
-| HR | `eaaf-local-hr` | `eaaf-mock` | 20 | $1.00 |
-| IT | `eaaf-local-it` | `eaaf-mock`, `eaaf-mock-extended` | 100 | $10.00 |
-| Marketing | `eaaf-local-marketing` | `eaaf-mock-extended` | 50 | $2.00 |
+| Component | Role | Delivery |
+| --- | --- | --- |
+| **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
+| **Model Switcher** | LiteLLM Proxy resolves a requested model alias to a provider. The demo routes two aliases to one mock provider. | **Sprint 1 · alias routing available.** Additional providers and routing policies are future work. |
+| **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
+| **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
+| **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
-The profiles in [applications.yaml](config/applications.yaml) reference environment variables for their keys. Override the Compose defaults with `EAAF_HR_API_KEY`, `EAAF_IT_API_KEY`, and `EAAF_MARKETING_API_KEY`. The gateway loads policies on startup. Recreate the gateway after changing keys or policies.
+Sprint 3 and Sprint 4 describe the intended sequence. The current API supports non-streaming text chat completions.
 
-## Run locally
+## How we build and validate EAAF
 
-With Docker Compose v2, run from the project root:
+The **MVP** answers one question. Can an enterprise application make a governed model call and see why the Gateway allowed or refused it? A request, its policy decision, and the corresponding usage record are enough to exercise that flow. The simulated provider keeps the result reproducible and removes the need for cloud credentials during validation.
+
+A **sprint** has a demonstrable outcome. An **increment** is a smaller change within a sprint that can be run and tested with the existing stack.
+
+| Sprint | Increments | What we verify |
+| --- | --- | --- |
+| **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
+| **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
+| **3 · RAG pilot, proposed** | Start with a small local document set and add retrieval before generation. | Check that the answer uses permitted excerpts and that the model call still passes through the Gateway. |
+| **4 · Agent pilot, proposed** | Start with a bounded workflow and a single controlled tool. | Check who can invoke the tool, how approval is enforced, and what is recorded. |
+
+Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
+
+## Run the local demo
+
+With Python 3.12 and Docker Compose v2, run from the repository root.
 
 ```sh
+python scripts/init_local_env.py
 docker compose up --build --wait
 ```
 
-In PowerShell:
+The setup script generates unique keys in the Git-ignored `.env` file. If local keys already exist, it adds the Global key when missing and preserves existing values. Compose requires the keys at startup.
 
-```powershell
-$body = @{
-    model = 'eaaf-mock'
-    messages = @(@{role = 'user'; content = 'Hello'})
-} | ConvertTo-Json -Depth 4
-$headers = @{Authorization = 'Bearer eaaf-local-hr'}
-$result = Invoke-RestMethod http://127.0.0.1:8000/v1/chat/completions -Method Post -ContentType 'application/json' -Headers $headers -Body $body
-$result.choices[0].message.content
+| Chat space | Local URL | Key name in `.env` |
+| --- | --- | --- |
+| Global | [`/chat/global`](http://127.0.0.1:8000/chat/global) | `EAAF_GLOBAL_API_KEY` |
+| HR | [`/chat/hr`](http://127.0.0.1:8000/chat/hr) | `EAAF_HR_API_KEY` |
+| IT | [`/chat/it`](http://127.0.0.1:8000/chat/it) | `EAAF_IT_API_KEY` |
+| Marketing | [`/chat/marketing`](http://127.0.0.1:8000/chat/marketing) | `EAAF_MARKETING_API_KEY` |
+
+The root URL opens Global. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
+
+1. Open [HR Chat](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
+2. Select `eaaf-mock` and send a message. The simulated provider replies with `Hello from the EAAF mock provider.`
+3. Keep the HR key, switch to `eaaf-mock-extended`, and send a message. The Gateway returns **HTTP 403** and the Chat app keeps your draft.
+4. Open **IT** from the navigation, enter `EAAF_IT_API_KEY`, select the same extended model, and send a new message. The Gateway allows the request.
+
+Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
+
+### Application policies
+
+| Application | Allowed models | Requests per UTC day | Simulated monthly budget |
+| --- | --- | ---: | ---: |
+| Global | `eaaf-mock` | 50 | $3.00 |
+| HR | `eaaf-mock` | 20 | $1.00 |
+| IT | `eaaf-mock`, `eaaf-mock-extended` | 100 | $10.00 |
+| Marketing | `eaaf-mock-extended` | 50 | $2.00 |
+
+[Application profiles](config/applications.yaml) reference the Chat keys by environment variable. The Gateway and LiteLLM share `LITELLM_MASTER_KEY` for their internal connection. `EAAF_MOCK_API_KEY` supplies the value expected by the OpenAI-compatible adapter for the local mock. Recreate the affected services after changing keys.
+
+To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose **Authorize**, enter an application key from `.env`, and call `POST /v1/chat/completions`.
+
+```json
+{
+  "model": "eaaf-mock",
+  "messages": [{"role": "user", "content": "Hello"}]
+}
 ```
 
-Expected output:
+The Gateway returns **401** for missing or invalid credentials, **403** for a forbidden model, and **429** for an exhausted quota or budget. Use [`/healthz`](http://127.0.0.1:8000/healthz) to check service availability.
 
-```text
-Hello from the EAAF mock provider.
-```
+### Usage and audit
 
-In [Swagger UI](http://127.0.0.1:8000/docs), click **Authorize** and enter only the token value, for example `eaaf-local-hr`. A missing or invalid key returns HTTP 401. A valid key requesting a model outside its allowlist returns HTTP 403. An exhausted quota or insufficient simulated budget returns HTTP 429 with a distinct explanation. The `/healthz` endpoint is public.
-
-## Usage and audit
-
-The gateway reserves one request and a simulated $0.02 per admitted dispatch before calling LiteLLM. The reservation counts even if the upstream call fails or the gateway stops before recording the result. Denied calls cost zero. Daily quotas reset at midnight UTC and monthly budgets reset on the first day of the month in UTC.
-
-Read the local JSON usage report from the project root.
+Each admitted dispatch reserves one request and a simulated $0.02 before LiteLLM is called. Upstream failures still count. Denied requests cost zero. Daily and monthly windows use UTC.
 
 ```sh
 docker compose exec -T gateway python -m eaaf.usage
 ```
 
-The report groups requests, simulated costs, and reported token totals by UTC month, application, and decision. Compose stores the SQLite database in a named volume that persists across restarts and `docker compose down`. The audit stores metadata only. It omits prompts, completions, application keys, and unrecognized model strings.
+The JSON report groups decisions, simulated cost, and reported tokens by UTC month and application. SQLite persists in a named Docker volume. The audit stores metadata and excludes prompts, replies, keys, and unrecognized model strings.
+
+## Repository layout
+
+```text
+chat/       Browser Chat client
+eaaf/       FastAPI Gateway and local usage store
+config/     Application policies and LiteLLM model routing
+docs/       Architecture and design notes
+tests/      Gateway and end-to-end tests
+```
+
+Docker Compose launches the demo as one stack. Chat uses the Gateway's HTTP API, and LiteLLM already runs as a separate service. A scaled deployment can package those components independently from this repository. Replicated Gateways would need shared, transactional quota and budget state plus a shared audit store.
+
+### Credentials for remote deployment
+
+Store remote application keys and the LiteLLM master key as GitHub Actions secrets scoped to the target deployment environment. A future deployment workflow will pass them to the corresponding services as runtime environment variables. Real provider keys belong in that same secret store and are passed only to the service that calls the provider. The local mock key is used only when deploying the mock stack. Keep the Chat assets independent of these secrets.
 
 ## Tests
 
@@ -73,7 +136,7 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-To include the live end-to-end test, start Compose, then set the gateway URL. In PowerShell:
+To include end-to-end tests, start the Compose stack and run the suite with `EAAF_E2E_URL=http://127.0.0.1:8000`. In PowerShell:
 
 ```powershell
 $env:EAAF_E2E_URL = 'http://127.0.0.1:8000'
@@ -82,6 +145,6 @@ Remove-Item Env:EAAF_E2E_URL
 docker compose down
 ```
 
-The end-to-end tests check each application's model access, rejection of an unauthenticated call, and the mock response through the gateway. The GitHub Actions workflow builds the Compose stack and runs the same suite.
+GitHub Actions generates temporary keys for each CI run, builds the Compose stack, and runs the same suite. CI uses the simulated provider.
 
-See [Architecture](docs/architecture.md) for the service boundaries and storage behavior. EAAF code is licensed under the [MIT License](LICENSE). Third-party components are distributed under their own terms.
+See [Architecture](docs/architecture.md) for implementation details. EAAF code is licensed under the [MIT License](LICENSE). Third-party components are distributed under their own terms.

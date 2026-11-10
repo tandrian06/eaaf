@@ -30,7 +30,7 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | Component | Role | Delivery |
 | --- | --- | --- |
 | **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
-| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for IT. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
+| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for HR, IT, and Marketing. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
 | **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
@@ -84,9 +84,9 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |
 | --- | --- | ---: | ---: |
 | Global | `eaaf-mock` | 50 | $3.00 |
-| HR | `eaaf-mock-hr` | 20 | $1.00 |
+| HR | `eaaf-mock-hr`, `eaaf-openai-mini` (optional) | 20 | $1.00 |
 | IT | `eaaf-mock-it`, `eaaf-openai-mini` (optional) | 100 | $10.00 |
-| Marketing | `eaaf-mock-marketing` | 50 | $2.00 |
+| Marketing | `eaaf-mock-marketing`, `eaaf-openai-mini` (optional) | 50 | $2.00 |
 
 [Application profiles](config/applications.yaml) reference the Chat keys by environment variable. The Gateway and LiteLLM share `LITELLM_MASTER_KEY` for their internal connection. `EAAF_MOCK_API_KEY` supplies the value expected by the OpenAI-compatible adapter for the local mock. Recreate the affected services after changing keys.
 
@@ -109,7 +109,7 @@ Add `OPENAI_API_KEY` to the local, Git-ignored `.env` and start with both Compos
 docker compose -f compose.yaml -f compose.openai.yaml up --build --wait
 ```
 
-Open [IT Chat](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. The IT profile authorizes it. The other spaces reject it. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
+Open [IT Chat](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. HR, IT, and Marketing authorize it when OpenAI mode is enabled. Global uses its local mock. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
 
 The overlay gives only LiteLLM an external network and the provider key. Run `docker compose up --build --wait` with the base configuration to return to mock-only mode. For a future remote deployment, store `OPENAI_API_KEY` as an environment-scoped GitHub Actions secret.
 

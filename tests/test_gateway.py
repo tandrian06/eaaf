@@ -57,6 +57,55 @@ def test_knowledge_context_and_sources_are_scoped_to_hr():
     assert b"five working days" not in contents
 
 
+def test_semantic_search_ranks_only_hr_and_reuses_document_vectors(monkeypatch):
+    monkeypatch.setenv("EAAF_OPENAI_ENABLED", "true")
+    embedding_inputs = []
+    completions = []
+
+    def proxy(request):
+        payload = json.loads(request.content)
+        if request.url.path == "/v1/embeddings":
+            texts = payload["input"]
+            embedding_inputs.append(texts)
+            assert payload["model"] == "eaaf-knowledge-embedding"
+            assert all("VPN" not in text for text in texts)
+            query = [0, 0, 1] if "astronomy" in texts[0] else [1, 0, 0]
+            vectors = [query, [1, 0, 0], [0, 1, 0]][:len(texts)]
+            return httpx.Response(200, json={"data": [
+                {"index": i, "embedding": vector} for i, vector in enumerate(vectors)
+            ]})
+        completions.append(payload)
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    app = create_app(httpx.MockTransport(proxy))
+    body = {**BODY, "use_knowledge": True, "retrieval": "semantic", "messages": [
+        {"role": "user", "content": "Je voudrais prendre quelques jours pour partir en voyage."},
+    ]}
+    with TestClient(app) as client:
+        response = client.post("/chat/hr/completions", json=body, headers=HR_HEADERS)
+        assert response.status_code == 200
+        assert [source["id"] for source in response.json()["sources"]] == ["hr-leave"]
+        body["messages"][0]["content"] = "Tell me about astronomy."
+        assert client.post("/chat/hr/completions", json=body, headers=HR_HEADERS).status_code == 404
+        assert client.post("/chat/it/completions", json=body, headers=HR_HEADERS).status_code == 403
+
+    assert [len(texts) for texts in embedding_inputs] == [3, 1]
+    assert len(completions) == 1
+    assert "retrieval" not in completions[0]
+    assert "five working days" in completions[0]["messages"][0]["content"]
+    assert any(row["decision"] == "knowledge_no_match" for row in app.state.usage.report())
+
+
+def test_semantic_search_is_disabled_by_default():
+    def proxy(request):
+        pytest.fail("Disabled semantic search reached the proxy")
+
+    body = {**BODY, "use_knowledge": True, "retrieval": "semantic"}
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        assert client.get("/chat/hr/options").json()["semantic"] is False
+        assert client.post("/chat/hr/completions", json=body, headers=HR_HEADERS).status_code == 403
+
+
 @pytest.mark.parametrize("path, headers, model, expected", [
     ("/chat/hr/completions", {}, "eaaf-mock-hr", 401),
     ("/chat/it/completions", HR_HEADERS, "eaaf-mock-it", 403),

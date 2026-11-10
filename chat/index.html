@@ -59,6 +59,14 @@
         <div id="knowledge-control" class="knowledge-control" hidden>
           <label><input id="use-knowledge" type="checkbox"> Use department knowledge</label>
           <p class="muted">Search fictional documents from this department. Changing mode starts a new conversation.</p>
+          <div id="retrieval-control" hidden>
+            <label for="retrieval">Search method</label>
+            <select id="retrieval">
+              <option value="keyword">Keywords (local)</option>
+              <option value="semantic">Semantic search (OpenAI, billed)</option>
+            </select>
+            <p class="muted">Semantic search sends the question and department documents to OpenAI for embeddings, even with a mock response model.</p>
+          </div>
         </div>
           <p id="status" class="status" role="status"></p>
           <p id="error" class="error" role="alert" hidden></p>

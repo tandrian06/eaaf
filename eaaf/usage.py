@@ -80,7 +80,7 @@ class UsageStore:
 
     def finish(self, event_id: int, status_code: int, total_tokens: int | None = None) -> None:
         with closing(sqlite3.connect(self.path)) as db, db:
-            decision = "completed" if status_code == 200 else "upstream_failure"
+            decision = {200: "completed", 404: "knowledge_no_match"}.get(status_code, "upstream_failure")
             db.execute(
                 """UPDATE events SET decision = ?, status_code = ?, total_tokens = ?
                    WHERE id = ? AND decision = 'admitted'""",

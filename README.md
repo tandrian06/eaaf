@@ -94,6 +94,12 @@ The [fictional Markdown corpus](knowledge/) is searched locally with accent-inse
 
 The Gateway validates and loads the corpus at startup. Document files stay on the Gateway side. The Chat displays only the excerpts returned for the authorized request.
 
+### Compare keyword and semantic search
+
+With the optional OpenAI mode running, enable **Use department knowledge** in the IT App. Ask **How can I reach company resources from home?** using **Keywords (local)**, then switch to **Semantic search (OpenAI, billed)** and ask again. The semantic mode is designed to retrieve **Remote access and VPN** even when the question omits its keywords. Select the IT mock to compare the sources without making a paid generation call.
+
+Semantic search uses `text-embedding-3-small` through LiteLLM. It sends the question and, on the first semantic request for a department, that department's fictional source text to OpenAI. The Gateway keeps the document vectors in memory until restart and ranks only the authenticated department by cosine similarity. The pilot returns up to two matches above its relevance threshold. Semantic requests reserve the same simulated charge before embedding. An unmatched semantic request can incur an embedding charge and skips generation. Keyword search stays local and remains the default.
+
 ### Application policies
 
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |

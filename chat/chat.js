@@ -9,13 +9,16 @@ const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
 const useKnowledge = document.querySelector("#use-knowledge");
+const retrieval = document.querySelector("#retrieval");
+const retrievalControl = document.querySelector("#retrieval-control");
+let semanticAvailable = false;
 const spacePath = window.location.pathname;
 fetch(`${spacePath}/options`)
   .then((response) => {
     if (!response.ok) throw new Error("Could not load models");
     return response.json();
   })
-  .then(({ models, knowledge }) => {
+  .then(({ models, knowledge, semantic }) => {
     for (const { id, external } of models) {
       model.add(new Option(external ? `${id} (external, billed)` : id, id));
     }
@@ -23,6 +26,8 @@ fetch(`${spacePath}/options`)
     model.disabled = false;
     send.disabled = false;
     document.querySelector("#knowledge-control").hidden = !knowledge;
+    semanticAvailable = semantic;
+    retrievalControl.hidden = !semanticAvailable || !useKnowledge.checked;
   })
   .catch(() => {
     setError("Could not load models for this space. Reload the page to try again.");
@@ -76,7 +81,7 @@ function syncKey() {
 
 function setPending(value) {
   pending = value;
-  for (const control of [keyInput, model, messageInput, newChat, send, useKnowledge]) {
+  for (const control of [keyInput, model, messageInput, newChat, send, useKnowledge, retrieval]) {
     control.disabled = value;
   }
 }
@@ -111,7 +116,11 @@ function appendMessage({ role, content }, sources = []) {
 }
 
 keyInput.addEventListener("input", syncKey);
-useKnowledge.addEventListener("change", clearConversation);
+useKnowledge.addEventListener("change", () => {
+  retrievalControl.hidden = !semanticAvailable || !useKnowledge.checked;
+  clearConversation();
+});
+retrieval.addEventListener("change", clearConversation);
 newChat.addEventListener("click", () => {
   clearConversation();
   messageInput.value = "";
@@ -157,6 +166,7 @@ form.addEventListener("submit", async (event) => {
         model: requestedModel,
         messages: [...history, userMessage],
         use_knowledge: useKnowledge.checked,
+        retrieval: useKnowledge.checked ? retrieval.value : "keyword",
       }),
       cache: "no-store",
       redirect: "error",

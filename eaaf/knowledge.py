@@ -1,12 +1,16 @@
 import re
 import unicodedata
+from asyncio import Lock
+from math import hypot, isfinite
 from pathlib import Path
 
+import httpx
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 
 MAX_DOCUMENT_CHARS = 4000
+MIN_SEMANTIC_SCORE = 0.35
 
 
 class SourceMetadata(BaseModel):
@@ -75,3 +79,53 @@ def retrieve(sources: list[Source], question: str) -> list[Source]:
     ]
     ranked = sorted(matches, key=lambda match: match[0], reverse=True)
     return [source for score, source in ranked if score > 0][:2]
+
+
+async def embed(client: httpx.AsyncClient, texts: list[str]) -> list[tuple[float, ...]]:
+    response = await client.post(
+        "/v1/embeddings", json={"model": "eaaf-knowledge-embedding", "input": texts}
+    )
+    response.raise_for_status()
+    rows = sorted(response.json()["data"], key=lambda row: row["index"])
+    if [row["index"] for row in rows] != list(range(len(texts))):
+        raise ValueError("Invalid embedding indices")
+    vectors = []
+    for row in rows:
+        vector = tuple(row["embedding"])
+        norm = hypot(*vector)
+        if not isfinite(norm) or norm == 0:
+            raise ValueError("Invalid embedding vector")
+        vectors.append(tuple(value / norm for value in vector))
+    return vectors
+
+
+class SemanticIndex:
+    def __init__(self, corpus: dict[str, list[Source]]):
+        self.corpus = corpus
+        self.vectors: dict[str, list[tuple[float, ...]]] = {}
+        self.locks = {department: Lock() for department in corpus}
+
+    async def search(self, client: httpx.AsyncClient, department: str, question: str) -> list[Source]:
+        sources = self.corpus[department]
+        async with self.locks[department]:
+            vectors = self.vectors.get(department)
+            if vectors is None:
+                texts = [f"{source.title}\n{source.excerpt}" for source in sources]
+                query, *vectors = await embed(client, [question, *texts])
+                if any(len(vector) != len(query) for vector in vectors):
+                    raise ValueError("Incompatible embedding dimensions")
+                self.vectors[department] = vectors
+            else:
+                query = None
+        if query is None:
+            query, = await embed(client, [question])
+
+        ranked = sorted(
+            (
+                (sum(a * b for a, b in zip(query, vector, strict=True)), source)
+                for vector, source in zip(vectors, sources, strict=True)
+            ),
+            key=lambda match: match[0],
+            reverse=True,
+        )
+        return [source for score, source in ranked if score >= MIN_SEMANTIC_SCORE][:2]

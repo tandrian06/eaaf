@@ -9,6 +9,7 @@ const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
 const spacePath = window.location.pathname;
+document.documentElement.dataset.chatSpace = spacePath.split("/").at(-1);
 for (const link of document.querySelectorAll(".spaces a")) {
   if (link.getAttribute("href") === spacePath) {
     link.setAttribute("aria-current", "page");

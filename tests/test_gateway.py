@@ -13,11 +13,22 @@ HR_HEADERS = {"Authorization": "Bearer test-hr"}
 
 @pytest.fixture(autouse=True)
 def application_keys(monkeypatch, tmp_path):
+    monkeypatch.setenv("EAAF_GLOBAL_API_KEY", "test-global")
     monkeypatch.setenv("EAAF_HR_API_KEY", "test-hr")
     monkeypatch.setenv("EAAF_IT_API_KEY", "test-it")
     monkeypatch.setenv("EAAF_MARKETING_API_KEY", "test-marketing")
     monkeypatch.setenv("LITELLM_MASTER_KEY", "sk-test-proxy")
     monkeypatch.setenv("EAAF_USAGE_DB", str(tmp_path / "test.sqlite3"))
+
+
+def test_chat_space_rejects_another_app_key_before_routing():
+    def proxy(request):
+        pytest.fail("Cross-space request reached the proxy")
+
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        response = client.post("/chat/global/completions", json=BODY, headers=HR_HEADERS)
+    assert response.status_code == 403
+    assert client.app.state.usage.report()[0]["decision"] == "chat_space_forbidden"
 
 
 def test_forwards_completion_to_proxy():

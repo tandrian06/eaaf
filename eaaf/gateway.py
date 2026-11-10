@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Security
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -86,10 +86,20 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     app.mount("/chat-assets", StaticFiles(directory=CHAT_ASSETS), name="chat-assets")
 
     @app.get("/", include_in_schema=False)
-    async def chat() -> FileResponse:
+    async def home() -> RedirectResponse:
+        return RedirectResponse("/chat/global")
+
+    @app.get("/chat/{space}", include_in_schema=False, response_model=None)
+    async def chat(space: str, request: Request) -> FileResponse | RedirectResponse:
+        canonical = space.lower()
+        if not any(profile.name == canonical for profile in request.app.state.applications.values()):
+            raise HTTPException(404, "Chat space not found")
+        if space != canonical:
+            return RedirectResponse(f"/chat/{canonical}")
         return FileResponse(
             CHAT_ASSETS / "index.html",
             headers={
+                "Cache-Control": "no-store",
                 "Content-Security-Policy": (
                     "default-src 'none'; script-src 'self'; style-src 'self'; "
                     "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
@@ -106,6 +116,7 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.post("/chat/{space}/completions", include_in_schema=False)
     @app.post("/v1/chat/completions")
     async def complete(
         body: ChatRequest,
@@ -113,6 +124,10 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
         application: Annotated[Application, Security(require_application)],
     ) -> dict:
         usage = request.app.state.usage
+        space = request.path_params.get("space")
+        if space is not None and space.lower() != application.name:
+            await run_in_threadpool(usage.record_denial, "chat_space_forbidden", 403, application)
+            raise HTTPException(403, "Application key is not allowed in this chat space")
         if body.model not in application.policy.allowed_models:
             await run_in_threadpool(usage.record_denial, "model_forbidden", 403, application)
             raise HTTPException(403, "Model is not allowed for this application")

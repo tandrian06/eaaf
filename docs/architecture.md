@@ -25,6 +25,6 @@ SQLite stores timestamps, application identifiers, domain, cost center, permitte
 
 ## Sprint 2 Chat client
 
-The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. The gateway serves the Chat page and its static assets. The browser calls the same `POST /v1/chat/completions` endpoint as other clients. The application key and accepted conversation turns are held in page memory. A new request sends the accepted turns and the new message. Changing credentials clears the conversation. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
+The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
 
 RAG and agent clients can share the same gateway boundary. Each new capability can extend the client contract and governance policies independently of the provider deployment.

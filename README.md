@@ -61,12 +61,21 @@ python scripts/init_local_env.py
 docker compose up --build --wait
 ```
 
-The setup script generates unique keys in the Git-ignored `.env` file and preserves an existing file. Compose requires the keys at startup.
+The setup script generates unique keys in the Git-ignored `.env` file. If local keys already exist, it adds the Global key when missing and preserves existing values. Compose requires the keys at startup.
 
-1. Open [EAAF Chat](http://127.0.0.1:8000/) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
+| Chat space | Local URL | Key name in `.env` |
+| --- | --- | --- |
+| Global | [`/chat/global`](http://127.0.0.1:8000/chat/global) | `EAAF_GLOBAL_API_KEY` |
+| HR | [`/chat/hr`](http://127.0.0.1:8000/chat/hr) | `EAAF_HR_API_KEY` |
+| IT | [`/chat/it`](http://127.0.0.1:8000/chat/it) | `EAAF_IT_API_KEY` |
+| Marketing | [`/chat/marketing`](http://127.0.0.1:8000/chat/marketing) | `EAAF_MARKETING_API_KEY` |
+
+The root URL opens Global. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
+
+1. Open [HR Chat](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
 2. Select `eaaf-mock` and send a message. The simulated provider replies with `Hello from the EAAF mock provider.`
 3. Keep the HR key, switch to `eaaf-mock-extended`, and send a message. The Gateway returns **HTTP 403** and the Chat app keeps your draft.
-4. Replace the key with the value of `EAAF_IT_API_KEY` and send a new message with the same extended model. The Gateway allows the request. Changing application keys clears the conversation.
+4. Open **IT** from the navigation, enter `EAAF_IT_API_KEY`, select the same extended model, and send a new message. The Gateway allows the request.
 
 Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
 
@@ -74,11 +83,12 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |
 | --- | --- | ---: | ---: |
+| Global | `eaaf-mock` | 50 | $3.00 |
 | HR | `eaaf-mock` | 20 | $1.00 |
 | IT | `eaaf-mock`, `eaaf-mock-extended` | 100 | $10.00 |
 | Marketing | `eaaf-mock-extended` | 50 | $2.00 |
 
-[Application profiles](config/applications.yaml) reference `EAAF_HR_API_KEY`, `EAAF_IT_API_KEY`, and `EAAF_MARKETING_API_KEY` by environment variable. The Gateway and LiteLLM share `LITELLM_MASTER_KEY` for their internal connection. `EAAF_MOCK_API_KEY` supplies the value expected by the OpenAI-compatible adapter for the local mock. Recreate the affected services after changing keys.
+[Application profiles](config/applications.yaml) reference the Chat keys by environment variable. The Gateway and LiteLLM share `LITELLM_MASTER_KEY` for their internal connection. `EAAF_MOCK_API_KEY` supplies the value expected by the OpenAI-compatible adapter for the local mock. Recreate the affected services after changing keys.
 
 To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose **Authorize**, enter an application key from `.env`, and call `POST /v1/chat/completions`.
 

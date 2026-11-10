@@ -18,16 +18,44 @@ def application_key(application):
 @pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
 def test_chat_page_and_assets_are_served():
     with httpx.Client(base_url=os.environ["EAAF_E2E_URL"], trust_env=False) as client:
-        page = client.get("/")
-        assert page.status_code == 200
-        assert "<title>EAAF Chat" in page.text
-        assert "connect-src 'self'" in page.headers["Content-Security-Policy"]
+        assert client.get("/").headers["location"] == "/chat/global"
+        assert client.get("/chat/IT").headers["location"] == "/chat/it"
+        assert client.get("/chat/unknown").status_code == 404
+        keys = [application_key(space) for space in ("global", "hr", "it", "marketing")]
+        for space in ("global", "hr", "it", "marketing"):
+            page = client.get(f"/chat/{space}")
+            assert page.status_code == 200
+            assert "<title>EAAF Chat" in page.text
+            assert "connect-src 'self'" in page.headers["Content-Security-Policy"]
+            assert not any(key in page.text for key in keys)
         for path in ("/chat-assets/chat.css", "/chat-assets/chat.js"):
             assert path in page.text
             asset = client.get(path)
             assert asset.status_code == 200
-            assert not any(application_key(app) in asset.text for app in ("hr", "it", "marketing"))
-        assert not any(application_key(app) in page.text for app in ("hr", "it", "marketing"))
+            assert not any(key in asset.text for key in keys)
+
+
+@pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
+@pytest.mark.parametrize("space, application, model, status", [
+    ("global", "global", "eaaf-mock", 200),
+    ("hr", "hr", "eaaf-mock", 200),
+    ("it", "it", "eaaf-mock-extended", 200),
+    ("marketing", "marketing", "eaaf-mock-extended", 200),
+    ("hr", "global", "eaaf-mock", 403),
+    ("global", "hr", "eaaf-mock", 403),
+])
+def test_scoped_chat_access(space, application, model, status):
+    with httpx.Client(base_url=os.environ["EAAF_E2E_URL"], trust_env=False, timeout=20) as client:
+        response = client.post(
+            f"/chat/{space}/completions",
+            headers={"Authorization": f"Bearer {application_key(application)}"},
+            json={"model": model, "messages": [{"role": "user", "content": "Hello"}]},
+        )
+    assert response.status_code == status
+    if status == 200:
+        assert response.json()["id"].startswith("chatcmpl-eaaf-mock-")
+    else:
+        assert response.json()["detail"] == "Application key is not allowed in this chat space"
 
 
 @pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")

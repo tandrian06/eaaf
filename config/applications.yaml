@@ -1,4 +1,12 @@
 applications:
+  global:
+    domain: General
+    cost_center: DEMO-GLOBAL
+    key_env: EAAF_GLOBAL_API_KEY
+    allowed_models: [eaaf-mock]
+    requests_per_day: 50
+    monthly_budget_cents: 300
+    request_cost_cents: 2
   hr:
     domain: Human Resources
     cost_center: DEMO-HR

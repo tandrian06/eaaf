@@ -85,6 +85,9 @@ button {
 }
 button:hover:not(:disabled) { background: #eaf3fc; }
 .chat-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.spaces { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.spaces a { color: var(--accent); border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; text-decoration: none; }
+.spaces a[aria-current="page"] { background: var(--accent); color: #fff; }
 .empty { color: var(--muted); background: #f2f6fa; border-radius: 10px; padding: 16px; margin: 20px 0 0; }
 .messages { list-style: none; padding: 0; margin: 20px 0 0; }
 .message { margin-top: 10px; padding: 10px 14px; border-radius: 10px; overflow-wrap: anywhere; }

@@ -16,7 +16,7 @@ from eaaf.policies import Application, authenticate, load_applications
 from eaaf.usage import usage_store
 
 DEFAULT_APPLICATIONS = Path(__file__).resolve().parents[1] / "config" / "applications.yaml"
-CHAT_ASSETS = Path(__file__).resolve().parent / "chat"
+CHAT_ASSETS = Path(__file__).resolve().parents[1] / "chat"
 application_bearer = HTTPBearer(auto_error=False, scheme_name="Application key")
 
 

@@ -54,16 +54,19 @@ Each delivered increment is exercised locally with Compose, then checked in GitH
 
 ## Run the local demo
 
-With Docker Compose v2, run from the repository root.
+With Python 3.12 and Docker Compose v2, run from the repository root.
 
 ```sh
+python scripts/init_local_env.py
 docker compose up --build --wait
 ```
 
-1. Open [EAAF Chat](http://127.0.0.1:8000/) and select **HR** to load its demo key.
+The setup script generates unique keys in the Git-ignored `.env` file and preserves an existing file. Compose requires the keys at startup.
+
+1. Open [EAAF Chat](http://127.0.0.1:8000/) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
 2. Select `eaaf-mock` and send a message. The simulated provider replies with `Hello from the EAAF mock provider.`
 3. Keep the HR key, switch to `eaaf-mock-extended`, and send a message. The Gateway returns **HTTP 403** and the Chat app keeps your draft.
-4. Select **IT** and send a new message with the same extended model. The Gateway allows the request. Changing application keys clears the conversation.
+4. Replace the key with the value of `EAAF_IT_API_KEY` and send a new message with the same extended model. The Gateway allows the request. Changing application keys clears the conversation.
 
 Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
 
@@ -75,9 +78,9 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 | IT | `eaaf-mock`, `eaaf-mock-extended` | 100 | $10.00 |
 | Marketing | `eaaf-mock-extended` | 50 | $2.00 |
 
-[Application profiles](config/applications.yaml) reference keys by environment variable. Override the Compose defaults with `EAAF_HR_API_KEY`, `EAAF_IT_API_KEY`, and `EAAF_MARKETING_API_KEY`, then recreate the Gateway. If you override a key, enter it manually in Chat.
+[Application profiles](config/applications.yaml) reference `EAAF_HR_API_KEY`, `EAAF_IT_API_KEY`, and `EAAF_MARKETING_API_KEY` by environment variable. The Gateway and LiteLLM share `LITELLM_MASTER_KEY` for their internal connection. `EAAF_MOCK_API_KEY` supplies the value expected by the OpenAI-compatible adapter for the local mock. Recreate the affected services after changing keys.
 
-To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose **Authorize**, enter the local demo token (for example, `eaaf-local-hr`), and call `POST /v1/chat/completions`.
+To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose **Authorize**, enter an application key from `.env`, and call `POST /v1/chat/completions`.
 
 ```json
 {
@@ -110,6 +113,10 @@ tests/      Gateway and end-to-end tests
 
 Docker Compose launches the demo as one stack. Chat uses the Gateway's HTTP API, and LiteLLM already runs as a separate service. A scaled deployment can package those components independently from this repository. Replicated Gateways would need shared, transactional quota and budget state plus a shared audit store.
 
+### Credentials for remote deployment
+
+Store remote application keys and the LiteLLM master key as GitHub Actions secrets scoped to the target deployment environment. A future deployment workflow will pass them to the corresponding services as runtime environment variables. Real provider keys belong in that same secret store and are passed only to the service that calls the provider. The local mock key is used only when deploying the mock stack. Keep the Chat assets independent of these secrets.
+
 ## Tests
 
 With Python 3.12 in a virtual environment:
@@ -128,6 +135,6 @@ Remove-Item Env:EAAF_E2E_URL
 docker compose down
 ```
 
-GitHub Actions builds the Compose stack and runs the same suite.
+GitHub Actions generates temporary keys for each CI run, builds the Compose stack, and runs the same suite. CI uses the simulated provider.
 
 See [Architecture](docs/architecture.md) for implementation details. EAAF code is licensed under the [MIT License](LICENSE). Third-party components are distributed under their own terms.

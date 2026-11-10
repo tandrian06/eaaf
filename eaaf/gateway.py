@@ -67,11 +67,14 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         config_path = Path(os.environ.get("EAAF_APPLICATIONS_CONFIG", DEFAULT_APPLICATIONS))
         app.state.applications = load_applications(config_path)
+        proxy_key = os.environ["LITELLM_MASTER_KEY"]
+        if not proxy_key.startswith("sk-") or len(proxy_key) <= 3:
+            raise ValueError("LITELLM_MASTER_KEY must start with sk- and contain a key")
         app.state.usage = usage_store()
         app.state.usage.initialize()
         async with httpx.AsyncClient(
             base_url=os.environ.get("LITELLM_BASE_URL", "http://127.0.0.1:4000"),
-            headers={"Authorization": "Bearer sk-eaaf-local-proxy"},
+            headers={"Authorization": f"Bearer {proxy_key}"},
             timeout=15,
             trust_env=False,
             transport=transport,

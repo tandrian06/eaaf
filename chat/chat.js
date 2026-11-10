@@ -8,7 +8,6 @@ const statusLine = document.querySelector("#status");
 const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
-const profiles = document.querySelectorAll("[data-demo-key]");
 
 let history = [];
 let conversationKey = "";
@@ -38,7 +37,7 @@ function syncKey() {
 
 function setPending(value) {
   pending = value;
-  for (const control of [keyInput, model, messageInput, newChat, send, ...profiles]) {
+  for (const control of [keyInput, model, messageInput, newChat, send]) {
     control.disabled = value;
   }
 }
@@ -55,12 +54,6 @@ function appendMessage({ role, content }) {
 }
 
 keyInput.addEventListener("input", syncKey);
-for (const button of profiles) {
-  button.addEventListener("click", () => {
-    keyInput.value = button.dataset.demoKey;
-    syncKey();
-  });
-}
 newChat.addEventListener("click", () => {
   clearConversation();
   messageInput.value = "";
@@ -81,7 +74,7 @@ form.addEventListener("submit", async (event) => {
     statusLine.textContent = "";
   }
   if (!key) {
-    setError("Enter an application key or choose a demo application.");
+    setError("Enter an application key.");
     keyInput.focus();
     return;
   }

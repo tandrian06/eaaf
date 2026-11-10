@@ -1,7 +1,18 @@
 import os
+from pathlib import Path
 
 import httpx
 import pytest
+from dotenv import dotenv_values
+
+
+def application_key(application):
+    name = f"EAAF_{application.upper()}_API_KEY"
+    env_file = Path(__file__).resolve().parents[1] / ".env"
+    key = os.getenv(name) if name in os.environ else dotenv_values(env_file).get(name)
+    if not key:
+        pytest.fail(f"Set {name} for end-to-end tests")
+    return key
 
 
 @pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
@@ -13,7 +24,10 @@ def test_chat_page_and_assets_are_served():
         assert "connect-src 'self'" in page.headers["Content-Security-Policy"]
         for path in ("/chat-assets/chat.css", "/chat-assets/chat.js"):
             assert path in page.text
-            assert client.get(path).status_code == 200
+            asset = client.get(path)
+            assert asset.status_code == 200
+            assert not any(application_key(app) in asset.text for app in ("hr", "it", "marketing"))
+        assert not any(application_key(app) in page.text for app in ("hr", "it", "marketing"))
 
 
 @pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
@@ -29,7 +43,7 @@ def test_chat_page_and_assets_are_served():
 def test_application_access(application, model, status):
     headers = {}
     if application:
-        key = os.getenv(f"EAAF_{application.upper()}_API_KEY") or f"eaaf-local-{application}"
+        key = application_key(application)
         headers["Authorization"] = f"Bearer {key}"
     response = httpx.post(
         f"{os.environ['EAAF_E2E_URL'].rstrip('/')}/v1/chat/completions",

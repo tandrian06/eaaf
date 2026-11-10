@@ -75,7 +75,6 @@ textarea { resize: vertical; }
 .muted, .note { color: var(--muted); font-size: .86rem; }
 .muted { margin: 8px 0; }
 .note { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
-.profiles { display: flex; gap: 5px; flex-wrap: wrap; }
 button {
   background: #fff;
   color: var(--accent);

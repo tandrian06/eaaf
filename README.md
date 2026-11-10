@@ -33,7 +33,7 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
 | **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
-| **RAG** | Retrieve excerpts from the authenticated department's fictional corpus and send them with the question through the Gateway. | **Sprint 3 · first increment available** |
+| **RAG** | Retrieve excerpts from the authenticated department's fictional Markdown corpus and send them with the question through the Gateway. | **Sprint 3 · local pilot available** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
 Sprint 4 describes the intended next step. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
@@ -48,7 +48,7 @@ A **sprint** has a demonstrable outcome. An **increment** is a smaller change wi
 | --- | --- | --- |
 | **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
 | **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
-| **3 · RAG pilot** | Search a small local document set by department and attach the matching excerpts before generation. Display the sources beside the reply. | Verify document isolation, behavior without a matching source, and that generation still passes through the Gateway. |
+| **3 · RAG pilot** | Search a small local document set by department, attach matching excerpts, and show sources. Move the corpus to editable Markdown files and load it from a manifest. | Verify document isolation, behavior without a matching source, and that a department cannot register a file from another corpus. |
 | **4 · Agent pilot, proposed** | Start with a bounded workflow and a single controlled tool. | Check who can invoke the tool, how approval is enforced, and what is recorded. |
 
 Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
@@ -84,7 +84,15 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 
 In a department App, enter its application key, enable **Use department knowledge**, and send a question. Try **Comment poser des congés ?** in HR, **Comment configurer le VPN ?** in IT, or **Où trouver le logo ?** in Marketing. Open **Sources** under the reply to read the selected excerpts. Global has no department corpus.
 
-The [fictional knowledge corpus](config/knowledge.yaml) is searched locally with accent-insensitive keywords. Each request uses up to two excerpts from its department. An unmatched question shows an error and skips the provider call. With a mock model, the reply identifies the simulator and the sources show what was retrieved. With optional OpenAI, the model receives the selected excerpts and is instructed to ground its reply in them. Use the fictional corpus and synthetic questions with external providers.
+The [fictional Markdown corpus](knowledge/) is searched locally with accent-insensitive keywords from the [knowledge manifest](config/knowledge.yaml). Each request uses up to two excerpts from its department. An unmatched question shows an error and skips the provider call. With a mock model, the reply identifies the simulator and the sources show what was retrieved. With optional OpenAI, the model receives the selected excerpts and is instructed to ground its reply in them. Use the fictional corpus and synthetic questions with external providers.
+
+### Add a local knowledge source
+
+1. Add a short UTF-8 Markdown file under `knowledge/hr/`, `knowledge/it/`, or `knowledge/marketing/`. Each file is one source, with a maximum of 4,000 characters.
+2. Register it under the matching department in `config/knowledge.yaml`. Set a unique source ID within that department, a title, search keywords, and a file path relative to the department directory.
+3. Rebuild the Gateway with `docker compose up --build --wait gateway`. If you use the OpenAI overlay, include both Compose files when rebuilding.
+
+The Gateway validates and loads the corpus at startup. Document files stay on the Gateway side. The Chat displays only the excerpts returned for the authorized request.
 
 ### Application policies
 

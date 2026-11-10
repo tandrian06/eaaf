@@ -9,6 +9,16 @@ const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
 const spacePath = window.location.pathname;
+fetch("/chat-options")
+  .then((response) => response.json())
+  .then(({ additional_models }) => {
+    for (const alias of additional_models) {
+      model.add(new Option(`${alias} (external, billed)`, alias));
+    }
+  })
+  .catch(() => {
+    // The built-in mock models are available without the optional configuration.
+  });
 document.documentElement.dataset.chatSpace = spacePath.split("/").at(-1);
 for (const link of document.querySelectorAll(".spaces a")) {
   if (link.getAttribute("href") === spacePath) {

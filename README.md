@@ -101,6 +101,18 @@ To call the API directly, use [Swagger UI](http://127.0.0.1:8000/docs). Choose *
 
 The Gateway returns **401** for missing or invalid credentials, **403** for a forbidden model, and **429** for an exhausted quota or budget. Use [`/healthz`](http://127.0.0.1:8000/healthz) to check service availability.
 
+### Optional OpenAI mode
+
+Add `OPENAI_API_KEY` to the local, Git-ignored `.env` and start with both Compose files.
+
+```sh
+docker compose -f compose.yaml -f compose.openai.yaml up --build --wait
+```
+
+Open [IT Chat](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. The IT profile authorizes it. The other spaces reject it. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
+
+The overlay gives only LiteLLM an external network and the provider key. Run `docker compose up --build --wait` with the base configuration to return to mock-only mode. For a future remote deployment, store `OPENAI_API_KEY` as an environment-scoped GitHub Actions secret.
+
 ### Usage and audit
 
 Each admitted dispatch reserves one request and a simulated $0.02 before LiteLLM is called. Upstream failures still count. Denied requests cost zero. Daily and monthly windows use UTC.

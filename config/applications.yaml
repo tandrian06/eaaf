@@ -19,7 +19,7 @@ applications:
     domain: Information Technology
     cost_center: DEMO-IT
     key_env: EAAF_IT_API_KEY
-    allowed_models: [eaaf-mock, eaaf-mock-extended]
+    allowed_models: [eaaf-mock, eaaf-mock-extended, eaaf-openai-mini]
     requests_per_day: 100
     monthly_budget_cents: 1000
     request_cost_cents: 2

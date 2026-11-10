@@ -13,6 +13,7 @@ HR_HEADERS = {"Authorization": "Bearer test-hr"}
 
 @pytest.fixture(autouse=True)
 def application_keys(monkeypatch, tmp_path):
+    monkeypatch.delenv("EAAF_OPENAI_ENABLED", raising=False)
     monkeypatch.setenv("EAAF_GLOBAL_API_KEY", "test-global")
     monkeypatch.setenv("EAAF_HR_API_KEY", "test-hr")
     monkeypatch.setenv("EAAF_IT_API_KEY", "test-it")
@@ -29,6 +30,32 @@ def test_chat_space_rejects_another_app_key_before_routing():
         response = client.post("/chat/global/completions", json=BODY, headers=HR_HEADERS)
     assert response.status_code == 403
     assert client.app.state.usage.report()[0]["decision"] == "chat_space_forbidden"
+
+
+@pytest.mark.parametrize("enabled, application, expected", [
+    (False, "it", 403),
+    (True, "hr", 403),
+    (True, "it", 200),
+])
+def test_openai_alias_requires_opt_in_and_it_policy(monkeypatch, enabled, application, expected):
+    if enabled:
+        monkeypatch.setenv("EAAF_OPENAI_ENABLED", "true")
+    alias = "eaaf-openai-mini"
+    calls = []
+
+    def proxy(request):
+        calls.append(json.loads(request.content)["model"])
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        assert client.get("/chat-options").json()["additional_models"] == ([alias] if enabled else [])
+        response = client.post(
+            f"/chat/{application}/completions",
+            json={**BODY, "model": alias},
+            headers={"Authorization": f"Bearer test-{application}"},
+        )
+    assert response.status_code == expected
+    assert calls == ([alias] if expected == 200 else [])
 
 
 def test_forwards_completion_to_proxy():

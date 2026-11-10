@@ -34,7 +34,8 @@ def test_chat_space_rejects_another_app_key_before_routing():
 
 @pytest.mark.parametrize("enabled, application, expected", [
     (False, "it", 403),
-    (True, "global", 403),
+    (False, "global", 403),
+    (True, "global", 200),
     (True, "hr", 200),
     (True, "marketing", 200),
     (True, "it", 200),
@@ -50,8 +51,9 @@ def test_openai_alias_requires_opt_in_and_application_policy(monkeypatch, enable
         return httpx.Response(200, json={"object": "chat.completion"})
 
     with TestClient(create_app(httpx.MockTransport(proxy))) as client:
-        models = client.get("/chat/it/options").json()["models"]
-        assert models[0] == {"id": "eaaf-mock-it", "external": False}
+        models = client.get(f"/chat/{application}/options").json()["models"]
+        mock = "eaaf-mock" if application == "global" else f"eaaf-mock-{application}"
+        assert models[0] == {"id": mock, "external": False}
         assert any(entry["id"] == alias for entry in models) == enabled
         response = client.post(
             f"/chat/{application}/completions",

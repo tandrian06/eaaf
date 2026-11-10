@@ -30,7 +30,7 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | Component | Role | Delivery |
 | --- | --- | --- |
 | **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
-| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for HR, IT, and Marketing. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
+| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
 | **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
@@ -70,12 +70,12 @@ The setup script generates unique keys in the Git-ignored `.env` file. If local 
 | IT | [`/chat/it`](http://127.0.0.1:8000/chat/it) | `EAAF_IT_API_KEY` |
 | Marketing | [`/chat/marketing`](http://127.0.0.1:8000/chat/marketing) | `EAAF_MARKETING_API_KEY` |
 
-The root URL opens the EAAF portal with Global Chat and links to the department chats. Each department has a link back to the portal. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
+The root URL opens the EAAF portal with Global Chat and links to the department apps. Each department has a link back to the portal. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
 
-1. Open [HR Chat](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
+1. Open [HR App](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
 2. Send a message with the preselected `eaaf-mock-hr`. The provider replies with `Hello from the EAAF HR mock (eaaf-mock-hr). This response is simulated.`
 3. Open **IT**, enter its key, and send a message. The default `eaaf-mock-it` identifies itself as the IT mock. Global and Marketing likewise identify their own mocks.
-4. To see a policy denial, paste the HR key into IT Chat and send a message. The Gateway returns **HTTP 403** and keeps the draft.
+4. To see a policy denial, paste the HR key into the IT App and send a message. The Gateway returns **HTTP 403** and keeps the draft.
 
 Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
 
@@ -83,7 +83,7 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |
 | --- | --- | ---: | ---: |
-| Global | `eaaf-mock` | 50 | $3.00 |
+| Global | `eaaf-mock`, `eaaf-openai-mini` (optional) | 50 | $3.00 |
 | HR | `eaaf-mock-hr`, `eaaf-openai-mini` (optional) | 20 | $1.00 |
 | IT | `eaaf-mock-it`, `eaaf-openai-mini` (optional) | 100 | $10.00 |
 | Marketing | `eaaf-mock-marketing`, `eaaf-openai-mini` (optional) | 50 | $2.00 |
@@ -109,7 +109,7 @@ Add `OPENAI_API_KEY` to the local, Git-ignored `.env` and start with both Compos
 docker compose -f compose.yaml -f compose.openai.yaml up --build --wait
 ```
 
-Open [IT Chat](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. HR, IT, and Marketing authorize it when OpenAI mode is enabled. Global uses its local mock. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
+Open [IT App](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. Global, HR, IT, and Marketing authorize it when OpenAI mode is enabled. Each space still selects its own mock by default. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
 
 The overlay gives only LiteLLM an external network and the provider key. Run `docker compose up --build --wait` with the base configuration to return to mock-only mode. For a future remote deployment, store `OPENAI_API_KEY` as an environment-scoped GitHub Actions secret.
 

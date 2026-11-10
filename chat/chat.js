@@ -33,9 +33,9 @@ if (space === "global") {
 } else {
   const department = [...document.querySelectorAll(".department-card")]
     .find((link) => link.dataset.space === space);
-  const title = `${department?.dataset.label ?? space} Chat`;
+  const title = `${department?.dataset.label ?? space} App`;
   document.querySelector("#page-title").textContent = title;
-  document.querySelector("#chat-title").textContent = "Conversation";
+  document.querySelector("#chat-title").textContent = "Chat";
   document.querySelector("#back-to-portal").hidden = false;
   document.title = `${title} · EAAF`;
 }

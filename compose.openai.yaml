@@ -1,0 +1,15 @@
+services:
+  gateway:
+    environment:
+      EAAF_OPENAI_ENABLED: "true"
+
+  litellm:
+    command: ["--config", /app/eaaf-openai.yaml, "--host", 0.0.0.0, "--port", "4000"]
+    environment:
+      OPENAI_API_KEY: "${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env to enable OpenAI}"
+    volumes:
+      - ./config/litellm.openai.yaml:/app/eaaf-openai.yaml:ro
+    networks: [backend, provider-egress]
+
+networks:
+  provider-egress:

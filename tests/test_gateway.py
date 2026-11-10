@@ -7,12 +7,13 @@ from fastapi.testclient import TestClient
 
 from eaaf.gateway import create_app
 
-BODY = {"model": "eaaf-mock", "messages": [{"role": "user", "content": "Hello"}]}
+BODY = {"model": "eaaf-mock-hr", "messages": [{"role": "user", "content": "Hello"}]}
 HR_HEADERS = {"Authorization": "Bearer test-hr"}
 
 
 @pytest.fixture(autouse=True)
 def application_keys(monkeypatch, tmp_path):
+    monkeypatch.delenv("EAAF_OPENAI_ENABLED", raising=False)
     monkeypatch.setenv("EAAF_GLOBAL_API_KEY", "test-global")
     monkeypatch.setenv("EAAF_HR_API_KEY", "test-hr")
     monkeypatch.setenv("EAAF_IT_API_KEY", "test-it")
@@ -29,6 +30,36 @@ def test_chat_space_rejects_another_app_key_before_routing():
         response = client.post("/chat/global/completions", json=BODY, headers=HR_HEADERS)
     assert response.status_code == 403
     assert client.app.state.usage.report()[0]["decision"] == "chat_space_forbidden"
+
+
+@pytest.mark.parametrize("enabled, application, expected", [
+    (False, "it", 403),
+    (True, "global", 403),
+    (True, "hr", 200),
+    (True, "marketing", 200),
+    (True, "it", 200),
+])
+def test_openai_alias_requires_opt_in_and_application_policy(monkeypatch, enabled, application, expected):
+    if enabled:
+        monkeypatch.setenv("EAAF_OPENAI_ENABLED", "true")
+    alias = "eaaf-openai-mini"
+    calls = []
+
+    def proxy(request):
+        calls.append(json.loads(request.content)["model"])
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        models = client.get("/chat/it/options").json()["models"]
+        assert models[0] == {"id": "eaaf-mock-it", "external": False}
+        assert any(entry["id"] == alias for entry in models) == enabled
+        response = client.post(
+            f"/chat/{application}/completions",
+            json={**BODY, "model": alias},
+            headers={"Authorization": f"Bearer test-{application}"},
+        )
+    assert response.status_code == expected
+    assert calls == ([alias] if expected == 200 else [])
 
 
 def test_forwards_completion_to_proxy():
@@ -85,7 +116,7 @@ def test_rejects_unauthenticated_requests_before_routing(authorization):
     assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
-@pytest.mark.parametrize("model", ["eaaf-mock-extended", "unknown"])
+@pytest.mark.parametrize("model", ["eaaf-mock-it", "unknown"])
 def test_rejects_forbidden_models_before_routing(model):
     def proxy(request):
         pytest.fail("Forbidden request reached the proxy")
@@ -127,7 +158,7 @@ def test_limit_blocks_before_routing_and_survives_restart(limits, detail):
 
 
 def test_audit_retains_metadata_and_excludes_request_and_response_content():
-    body = {"model": "eaaf-mock", "messages": [{"role": "user", "content": "private-prompt-marker"}]}
+    body = {"model": "eaaf-mock-hr", "messages": [{"role": "user", "content": "private-prompt-marker"}]}
 
     def proxy(request):
         return httpx.Response(200, json={
@@ -149,7 +180,7 @@ def test_audit_retains_metadata_and_excludes_request_and_response_content():
             FROM events ORDER BY id
         """).fetchall()
     assert rows == [
-        ("hr", "DEMO-HR", "eaaf-mock", "completed", 200, 2, 13),
+        ("hr", "DEMO-HR", "eaaf-mock-hr", "completed", 200, 2, 13),
         (None, None, None, "unauthenticated", 401, 0, None),
         ("hr", "DEMO-HR", None, "model_forbidden", 403, 0, None),
     ]

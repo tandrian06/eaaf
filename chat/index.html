@@ -20,10 +20,7 @@
       <input id="application-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a bearer token">
       <p class="muted">Paste the key for this space from your local .env file.</p>
       <label for="model">Model</label>
-      <select id="model">
-        <option>eaaf-mock</option>
-        <option>eaaf-mock-extended</option>
-      </select>
+      <select id="model" disabled></select>
       <p class="muted">Model access depends on the policy for this space.</p>
       <div class="note">This page keeps the conversation and key in memory. Requests go to the local gateway. Changing the key starts a new conversation.</div>
     </aside>
@@ -41,7 +38,7 @@
         <a href="/chat/it">IT</a>
         <a href="/chat/marketing">Marketing</a>
       </nav>
-      <p id="empty-state" class="empty">Send a message to see how EAAF handles it. The simulated provider returns a fixed reply.</p>
+      <p id="empty-state" class="empty">Send a message to see how EAAF handles it. Mock models return a fixed reply. External models send messages to their provider.</p>
       <ol id="messages" class="messages" aria-label="Conversation messages" aria-live="polite"></ol>
       <div class="composer">
         <p id="status" class="status" role="status"></p>
@@ -49,7 +46,7 @@
         <form id="composer">
           <label for="message">Your message</label>
           <textarea id="message" rows="3" placeholder="Try: Hello, EAAF." required></textarea>
-          <button id="send" class="primary" type="submit">Send message</button>
+          <button id="send" class="primary" type="submit" disabled>Send message</button>
         </form>
       </div>
     </section>

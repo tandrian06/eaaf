@@ -9,6 +9,22 @@ const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
 const spacePath = window.location.pathname;
+fetch(`${spacePath}/options`)
+  .then((response) => {
+    if (!response.ok) throw new Error("Could not load models");
+    return response.json();
+  })
+  .then(({ models }) => {
+    for (const { id, external } of models) {
+      model.add(new Option(external ? `${id} (external, billed)` : id, id));
+    }
+    if (!model.options.length) throw new Error("No models available");
+    model.disabled = false;
+    send.disabled = false;
+  })
+  .catch(() => {
+    setError("Could not load models for this space. Reload the page to try again.");
+  });
 document.documentElement.dataset.chatSpace = spacePath.split("/").at(-1);
 for (const link of document.querySelectorAll(".spaces a")) {
   if (link.getAttribute("href") === spacePath) {
@@ -76,7 +92,7 @@ newChat.addEventListener("click", () => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (pending) return;
+  if (pending || !model.value) return;
 
   const key = keyInput.value.trim();
   const content = messageInput.value.trim();

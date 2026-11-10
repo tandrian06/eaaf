@@ -56,6 +56,10 @@
         <p id="empty-state" class="empty">Send a message to see how EAAF handles it. Mock models return a fixed reply. External models send messages to their provider.</p>
         <ol id="messages" class="messages" aria-label="Conversation messages" aria-live="polite"></ol>
         <div class="composer">
+        <div id="knowledge-control" class="knowledge-control" hidden>
+          <label><input id="use-knowledge" type="checkbox"> Use department knowledge</label>
+          <p class="muted">Search fictional documents from this department. Changing mode starts a new conversation.</p>
+        </div>
           <p id="status" class="status" role="status"></p>
           <p id="error" class="error" role="alert" hidden></p>
           <form id="composer">

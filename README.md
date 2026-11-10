@@ -2,19 +2,20 @@
 
 EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a browser Chat app. It runs against a simulated provider with Docker Compose.
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, a browser Chat app, and a local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional.
 
 ## Target architecture
 
 ```mermaid
 flowchart LR
     Chat["Chat App"] --> Gateway["Governance Gateway · Trust Layer"]
-    RAG["RAG Application · planned"] -.-> Gateway
+    RAG["Dedicated RAG Application · planned"] -.-> Gateway
     Agents["Agent Runtime · planned"] -.-> Gateway
     Apps["Other enterprise clients"] -.-> Gateway
 
     Policies["Application policies"] --> Gateway
     Gateway --> Audit["Usage and decision audit"]
+    Gateway --> LocalKnowledge["Local RAG pilot · department corpus"]
     Gateway -->|Authorized model alias| Switcher["Model Switcher · LiteLLM Proxy"]
     Switcher --> Mock["Simulated provider"]
     Switcher -.-> Providers["Additional model providers · planned"]
@@ -32,10 +33,10 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
 | **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
-| **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
+| **RAG** | Retrieve excerpts from the authenticated department's fictional corpus and send them with the question through the Gateway. | **Sprint 3 · first increment available** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
-Sprint 3 and Sprint 4 describe the intended sequence. The current API supports non-streaming text chat completions.
+Sprint 4 describes the intended next step. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
 
 ## How we build and validate EAAF
 
@@ -47,7 +48,7 @@ A **sprint** has a demonstrable outcome. An **increment** is a smaller change wi
 | --- | --- | --- |
 | **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
 | **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
-| **3 · RAG pilot, proposed** | Start with a small local document set and add retrieval before generation. | Check that the answer uses permitted excerpts and that the model call still passes through the Gateway. |
+| **3 · RAG pilot** | Search a small local document set by department and attach the matching excerpts before generation. Display the sources beside the reply. | Verify document isolation, behavior without a matching source, and that generation still passes through the Gateway. |
 | **4 · Agent pilot, proposed** | Start with a bounded workflow and a single controlled tool. | Check who can invoke the tool, how approval is enforced, and what is recorded. |
 
 Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
@@ -78,6 +79,12 @@ The root URL opens the EAAF portal with Global Chat and links to the department 
 4. To see a policy denial, paste the HR key into the IT App and send a message. The Gateway returns **HTTP 403** and keeps the draft.
 
 Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
+
+### Try department knowledge
+
+In a department App, enter its application key, enable **Use department knowledge**, and send a question. Try **Comment poser des congés ?** in HR, **Comment configurer le VPN ?** in IT, or **Où trouver le logo ?** in Marketing. Open **Sources** under the reply to read the selected excerpts. Global has no department corpus.
+
+The [fictional knowledge corpus](config/knowledge.yaml) is searched locally with accent-insensitive keywords. Each request uses up to two excerpts from its department. An unmatched question shows an error and skips the provider call. With a mock model, the reply identifies the simulator and the sources show what was retrieved. With optional OpenAI, the model receives the selected excerpts and is instructed to ground its reply in them. Use the fictional corpus and synthetic questions with external providers.
 
 ### Application policies
 

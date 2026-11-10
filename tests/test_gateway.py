@@ -32,6 +32,51 @@ def test_chat_space_rejects_another_app_key_before_routing():
     assert client.app.state.usage.report()[0]["decision"] == "chat_space_forbidden"
 
 
+def test_knowledge_context_and_sources_are_scoped_to_hr():
+    def proxy(request):
+        payload = json.loads(request.content)
+        assert "use_knowledge" not in payload
+        context = payload["messages"][0]
+        assert context["role"] == "system"
+        assert "[1] Leave requests" in context["content"]
+        assert "five working days" in context["content"]
+        assert "VPN" not in context["content"]
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    body = {**BODY, "use_knowledge": True, "messages": [
+        {"role": "user", "content": "Quels sont les délais pour les congés et le VPN ?"},
+    ]}
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        response = client.post("/chat/hr/completions", json=body, headers=HR_HEADERS)
+    assert response.status_code == 200
+    sources = response.json()["sources"]
+    assert [source["id"] for source in sources] == ["hr-leave"]
+    assert "keywords" not in sources[0]
+    contents = client.app.state.usage.path.read_bytes()
+    assert b"Quels sont" not in contents
+    assert b"five working days" not in contents
+
+
+@pytest.mark.parametrize("path, headers, model, expected", [
+    ("/chat/hr/completions", {}, "eaaf-mock-hr", 401),
+    ("/chat/it/completions", HR_HEADERS, "eaaf-mock-it", 403),
+    ("/chat/global/completions", {"Authorization": "Bearer test-global"}, "eaaf-mock", 403),
+    ("/v1/chat/completions", HR_HEADERS, "eaaf-mock-hr", 403),
+    ("/chat/hr/completions", HR_HEADERS, "eaaf-mock-hr", 404),
+])
+def test_unavailable_knowledge_stops_before_routing(path, headers, model, expected):
+    def proxy(request):
+        pytest.fail("Unavailable knowledge request reached the proxy")
+
+    body = {"model": model, "use_knowledge": True, "messages": [
+        {"role": "user", "content": "How do I configure the VPN?"},
+    ]}
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        response = client.post(path, json=body, headers=headers)
+    assert response.status_code == expected
+    assert client.app.state.usage.report()[0]["simulated_cost_cents"] == 0
+
+
 @pytest.mark.parametrize("enabled, application, expected", [
     (False, "it", 403),
     (False, "global", 403),

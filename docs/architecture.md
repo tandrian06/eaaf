@@ -27,4 +27,8 @@ SQLite stores timestamps, application identifiers, domain, cost center, permitte
 
 The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
 
-RAG and agent clients can share the same gateway boundary. Each new capability can extend the client contract and governance policies independently of the provider deployment.
+## Sprint 3 department knowledge
+
+The local RAG pilot loads a small fictional corpus from `config/knowledge.yaml`. The Chat UI requests knowledge explicitly. After application authentication, space authorization, and model authorization, the Gateway selects the corpus using the authenticated application identity. It retrieves up to two keyword matches for the latest question and adds only those excerpts to the model context. Source IDs, titles, and excerpts are returned with the completion. Requests without a match stop before provider dispatch. The audit keeps decisions and usage metadata.
+
+The mock demonstrates retrieval and source display with a fixed response. An enabled external model can use the excerpts to generate a grounded response. External calls include the selected excerpts. The pilot uses lexical search over trusted synthetic documents. A future retrieval service can share the same gateway boundary.

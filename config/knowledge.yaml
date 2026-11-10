@@ -1,0 +1,27 @@
+hr:
+  - id: hr-leave
+    title: Leave requests
+    keywords: [leave, vacation, holidays, holiday, congé, congés, vacances, absence]
+    excerpt: Submit a planned leave request in the fictional People Portal at least five working days before the first day off. Your manager approves it in the same portal.
+  - id: hr-onboarding
+    title: New starter onboarding
+    keywords: [onboarding, starter, orientation, intégration, arrivée, embauche]
+    excerpt: New starters complete the fictional People Portal checklist during their first week. HR assigns a buddy before the start date.
+it:
+  - id: it-vpn
+    title: Remote access and VPN
+    keywords: [vpn, remote, télétravail, distant]
+    excerpt: Connect to the fictional EAAF VPN using the managed client and approve the MFA prompt. If access fails, open a ticket with the IT Service Desk.
+  - id: it-password
+    title: Password reset
+    keywords: [password, mot de passe, reset, réinitialiser, réinitialisation]
+    excerpt: Reset your password in the fictional account portal using your registered second factor. Contact the IT Service Desk if you cannot complete verification.
+marketing:
+  - id: marketing-brand
+    title: Brand asset library
+    keywords: [brand, branding, logo, assets, marque, visuels, charte]
+    excerpt: Download approved logos and templates from the fictional Brand Library. Use the current master files for external publications.
+  - id: marketing-campaign
+    title: Campaign approval
+    keywords: [campaign, campaigns, campagne, campagnes, launch, lancement]
+    excerpt: Submit campaign copy and visuals to the fictional Campaign Board at least three working days before launch for Marketing approval.

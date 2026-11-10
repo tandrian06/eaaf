@@ -8,19 +8,21 @@ const statusLine = document.querySelector("#status");
 const errorLine = document.querySelector("#error");
 const newChat = document.querySelector("#new-chat");
 const send = document.querySelector("#send");
+const useKnowledge = document.querySelector("#use-knowledge");
 const spacePath = window.location.pathname;
 fetch(`${spacePath}/options`)
   .then((response) => {
     if (!response.ok) throw new Error("Could not load models");
     return response.json();
   })
-  .then(({ models }) => {
+  .then(({ models, knowledge }) => {
     for (const { id, external } of models) {
       model.add(new Option(external ? `${id} (external, billed)` : id, id));
     }
     if (!model.options.length) throw new Error("No models available");
     model.disabled = false;
     send.disabled = false;
+    document.querySelector("#knowledge-control").hidden = !knowledge;
   })
   .catch(() => {
     setError("Could not load models for this space. Reload the page to try again.");
@@ -74,12 +76,12 @@ function syncKey() {
 
 function setPending(value) {
   pending = value;
-  for (const control of [keyInput, model, messageInput, newChat, send]) {
+  for (const control of [keyInput, model, messageInput, newChat, send, useKnowledge]) {
     control.disabled = value;
   }
 }
 
-function appendMessage({ role, content }) {
+function appendMessage({ role, content }, sources = []) {
   const item = document.createElement("li");
   item.className = `message ${role}`;
   const heading = document.createElement("strong");
@@ -87,10 +89,29 @@ function appendMessage({ role, content }) {
   const body = document.createElement("p");
   body.textContent = content;
   item.append(heading, body);
+  if (sources.length) {
+    const details = document.createElement("details");
+    details.className = "sources";
+    const summary = document.createElement("summary");
+    summary.textContent = `Sources · ${sources.length}`;
+    const list = document.createElement("ol");
+    for (const source of sources) {
+      const entry = document.createElement("li");
+      const title = document.createElement("strong");
+      title.textContent = source.title;
+      const excerpt = document.createElement("p");
+      excerpt.textContent = source.excerpt;
+      entry.append(title, excerpt);
+      list.append(entry);
+    }
+    details.append(summary, list);
+    item.append(details);
+  }
   transcript.append(item);
 }
 
 keyInput.addEventListener("input", syncKey);
+useKnowledge.addEventListener("change", clearConversation);
 newChat.addEventListener("click", () => {
   clearConversation();
   messageInput.value = "";
@@ -132,7 +153,11 @@ form.addEventListener("submit", async (event) => {
     const response = await fetch(`${spacePath}/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model: requestedModel, messages: [...history, userMessage] }),
+      body: JSON.stringify({
+        model: requestedModel,
+        messages: [...history, userMessage],
+        use_knowledge: useKnowledge.checked,
+      }),
       cache: "no-store",
       redirect: "error",
       signal: request.signal,
@@ -153,7 +178,7 @@ form.addEventListener("submit", async (event) => {
     history.push(userMessage, assistantMessage);
     emptyState.hidden = true;
     appendMessage(userMessage);
-    appendMessage(assistantMessage);
+    appendMessage(assistantMessage, Array.isArray(result.sources) ? result.sources : []);
     messageInput.value = "";
     statusLine.textContent = `HTTP ${response.status} · ${requestedModel}`;
   } catch {

@@ -11,6 +11,7 @@ The current version is a self-contained local demo. It includes the Governance G
 | [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, LiteLLM routing, and the current department RAG backend. It also governs model calls for architecture intake. |
 | [EAAF Work](https://github.com/tandrian06/eaaf-work) | Standalone browser portal and Chat client. It calls Core for scoped Chat and RAG. |
 | [EAAF DevOps](https://github.com/tandrian06/eaaf-devops) | Architecture intake, validation, and the reusable CLI that generates Terraform module calls and input files. |
+| [EAAF Ops](https://github.com/tandrian06/eaaf-ops) | Read-only ECS incident diagnosis from saved captures or live AWS events. Core can provide an optional explanation. |
 | [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
 
 ## Target architecture
@@ -21,6 +22,7 @@ flowchart LR
     RAG["Dedicated RAG Application · planned"] -.-> Gateway
     Agents["Agent Runtime · planned"] -.-> Gateway
     DevOps["AI for DevOps · AWS architecture intake"] -->|HTTP API · dedicated identity| Gateway
+    Ops["AI for Ops · ECS diagnostics"] -->|"Optional explanation"| Gateway
     Apps["Other enterprise clients"] -.-> Gateway
 
     Policies["Application policies"] --> Gateway

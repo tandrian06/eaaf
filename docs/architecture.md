@@ -43,3 +43,15 @@ Optional semantic retrieval uses the LiteLLM embeddings endpoint and an in-memor
 For natural-language intake, the CLI calls `POST /v1/chat/completions` with a dedicated application key. The DevOps repository supplies an optional Compose overlay that registers the DevOps application policy and its architecture model alias. The Gateway authenticates the request, enforces the allowlist and usage limits, and records audit metadata. LiteLLM routes the authorized request to OpenAI. The CLI validates the resulting draft and reports open decisions and pattern conflicts.
 
 The DevOps CLI can inspect a prepared Terraform module and generate a module call and input file from reviewed YAML. The [deployment demo](https://github.com/tandrian06/eaaf-deployment-demo) exercises that path locally and through GitHub Actions. Its AWS workflow supports a reviewed plan and a manually triggered apply.
+
+## AI for Ops integration
+
+[AI for Ops](https://github.com/tandrian06/eaaf-ops) diagnoses ECS incidents from JSON exports or live service events and stopped-task data. AWS access uses the operator's read-only AWS CLI profile. The diagnostic rules run in the Ops CLI and cite matching evidence. The CLI can send the report to Core's completion endpoint for an optional model explanation under an authorized application policy.
+
+```mermaid
+flowchart LR
+    ECS["ECS · read-only collection"] --> Ops["AI for Ops"]
+    Capture["Saved ECS exports"] --> Ops
+    Ops --> Report["Finding, evidence, and next check"]
+    Ops -->|"Optional explanation"| Gateway["EAAF Core Gateway"]
+```

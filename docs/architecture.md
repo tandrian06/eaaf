@@ -4,7 +4,8 @@
 
 ```mermaid
 flowchart LR
-    Client[HR / IT / Marketing] -->|Chat request and application key| Gateway[FastAPI EAAF Gateway / Trust Layer]
+    Client["Browser · Global, HR, IT, Marketing"] --> Work["EAAF Work portal"]
+    Work -->|Scoped Chat API and application key| Gateway["FastAPI EAAF Gateway / Trust Layer"]
     Profiles[YAML application profiles] -->|Policies| Gateway
     Gateway <-->|Limits and audit metadata| Usage[(Local SQLite)]
     Gateway -->|HTTP with local proxy credential| Proxy[LiteLLM Proxy]
@@ -25,7 +26,7 @@ SQLite stores timestamps, application identifiers, domain, cost center, permitte
 
 ## Sprint 2 Chat client
 
-The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
+The standalone Chat client lives in [EAAF Work](https://github.com/tandrian06/eaaf-work). Work serves the browser assets and forwards scoped Chat requests to Core. Core still bundles a copy in `chat/` for the original local Compose demo. Work forwards the application key and Core verifies it. The current department retrieval stays in Core. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
 
 ## Sprint 3 department knowledge
 

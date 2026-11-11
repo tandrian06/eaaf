@@ -2,13 +2,14 @@
 
 EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, a browser Chat app, and a local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional.
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, a browser Chat app, and a local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
 
 ## Repositories
 
 | Repository | What it contains |
 | --- | --- |
-| [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, LiteLLM routing, Chat, and department RAG. It governs model calls used to draft architecture from text. |
+| [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, LiteLLM routing, and the current department RAG backend. It also governs model calls for architecture intake. |
+| [EAAF Work](https://github.com/tandrian06/eaaf-work) | Standalone browser portal and Chat client. It calls Core for scoped Chat and RAG. |
 | [EAAF DevOps](https://github.com/tandrian06/eaaf-devops) | Architecture intake, validation, and the reusable CLI that generates Terraform module calls and input files. |
 | [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
 
@@ -16,7 +17,7 @@ The current version is a self-contained local demo. It includes the Governance G
 
 ```mermaid
 flowchart LR
-    Chat["Chat App"] --> Gateway["Governance Gateway · Trust Layer"]
+    Chat["EAAF Work · Chat portal"] -->|"Scoped Chat API"| Gateway["Governance Gateway · Trust Layer"]
     RAG["Dedicated RAG Application · planned"] -.-> Gateway
     Agents["Agent Runtime · planned"] -.-> Gateway
     DevOps["AI for DevOps · AWS architecture intake"] -->|HTTP API · dedicated identity| Gateway
@@ -34,7 +35,7 @@ flowchart LR
     Agents -.-> Tools["Controlled tools and workflows · planned"]
 ```
 
-Solid lines show the components wired together in the local demo. Dashed lines show the intended extensions. The Gateway controls which application may call which model and under what limits. The Model Switcher resolves the authorized alias to a provider. RAG retrieval and agent tool execution belong to their respective components, with their own access controls.
+Solid lines show the components wired together in the local demo. EAAF Work can run independently on port 8001 and calls Core on port 8000. Core also serves the bundled UI for the original Compose demo. Dashed lines show the intended extensions. The Gateway controls which application may call which model and under what limits. The Model Switcher resolves the authorized alias to a provider. RAG retrieval and agent tool execution belong to their respective components, with their own access controls.
 
 ## Components and sprint roadmap
 
@@ -157,14 +158,14 @@ The JSON report groups decisions, simulated cost, and reported tokens by UTC mon
 ## Repository layout
 
 ```text
-chat/       Browser Chat client
+chat/       Bundled browser Chat client for the original local demo
 eaaf/       FastAPI Gateway and local usage store
 config/     Application policies and LiteLLM model routing
 docs/       Architecture and design notes
 tests/      Gateway and end-to-end tests
 ```
 
-Docker Compose launches the demo as one stack. Chat uses the Gateway's HTTP API, and LiteLLM already runs as a separate service. A scaled deployment can package those components independently from this repository. Replicated Gateways would need shared, transactional quota and budget state plus a shared audit store.
+Docker Compose launches the demo as one stack. Chat uses the Gateway's HTTP API, and LiteLLM already runs as a separate service. The standalone Work application can be run independently from its own repository. Replicated Gateways would need shared, transactional quota and budget state plus a shared audit store.
 
 ### Credentials for remote deployment
 

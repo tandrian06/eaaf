@@ -34,3 +34,11 @@ The local RAG pilot loads fictional Markdown documents from `knowledge/` using t
 The mock demonstrates retrieval and source display with a fixed response. An enabled external model can use the excerpts to generate a grounded response. External calls include the selected excerpts. The pilot uses lexical search over trusted synthetic documents. A future retrieval service can share the same gateway boundary.
 
 Optional semantic retrieval uses the LiteLLM embeddings endpoint and an in-memory index keyed by authenticated department. The first search embeds the question and that department's sources in one batch. Subsequent requests reuse document vectors and embed only the latest question. The Gateway reserves quota and simulated budget before embedding, filters candidates to the authorized corpus, and applies cosine similarity and a minimum score before dispatching generation. The audit stores neither embeddings nor document or question text.
+
+## AI for DevOps integration
+
+[AI for DevOps](https://github.com/tandrian06/eaaf-devops) is the AWS-first Architecture-to-Terraform module. It owns the versioned architecture schema, ECS Fargate pattern validation, and review output. A structured YAML manifest can be reviewed entirely within the DevOps CLI.
+
+For natural-language intake, the CLI calls `POST /v1/chat/completions` with a dedicated application key. The DevOps repository supplies an optional Compose overlay that registers the DevOps application policy and its architecture model alias. The Gateway authenticates the request, enforces the allowlist and usage limits, and records audit metadata. LiteLLM routes the authorized request to OpenAI. The CLI validates the resulting draft and reports open decisions and pattern conflicts.
+
+The DevOps CLI can inspect a prepared Terraform module and generate a module call and input file from reviewed YAML. The [deployment demo](https://github.com/tandrian06/eaaf-deployment-demo) exercises that path locally and through GitHub Actions. Its AWS workflow supports a reviewed plan and a manually triggered apply.

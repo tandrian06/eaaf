@@ -4,6 +4,14 @@ EAAF is an open-source framework for building enterprise AI applications around 
 
 The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, a browser Chat app, and a local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional.
 
+## Repositories
+
+| Repository | What it contains |
+| --- | --- |
+| [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, LiteLLM routing, Chat, and department RAG. It governs model calls used to draft architecture from text. |
+| [EAAF DevOps](https://github.com/tandrian06/eaaf-devops) | Architecture intake, validation, and the reusable CLI that generates Terraform module calls and input files. |
+| [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
+
 ## Target architecture
 
 ```mermaid
@@ -11,6 +19,7 @@ flowchart LR
     Chat["Chat App"] --> Gateway["Governance Gateway · Trust Layer"]
     RAG["Dedicated RAG Application · planned"] -.-> Gateway
     Agents["Agent Runtime · planned"] -.-> Gateway
+    DevOps["AI for DevOps · AWS architecture intake"] -->|HTTP API · dedicated identity| Gateway
     Apps["Other enterprise clients"] -.-> Gateway
 
     Policies["Application policies"] --> Gateway
@@ -18,6 +27,7 @@ flowchart LR
     Gateway --> LocalKnowledge["Local RAG pilot · department corpus"]
     Gateway -->|Authorized model alias| Switcher["Model Switcher · LiteLLM Proxy"]
     Switcher --> Mock["Simulated provider"]
+    Switcher -->|Optional configuration| OpenAI["OpenAI"]
     Switcher -.-> Providers["Additional model providers · planned"]
 
     RAG -.-> Knowledge["Document index and retrieval · planned"]

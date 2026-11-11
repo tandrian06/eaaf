@@ -17,18 +17,25 @@ The current version is a self-contained local demo. It includes the Governance G
 ## Architecture
 
 ```mermaid
-flowchart TB
-    subgraph Clients["Client modules · separate repositories"]
-        Work["AI for Work · Chat and document search"]
-        DevOps["AI for DevOps · architecture intake"]
-        Ops["AI for Ops · incident diagnosis"]
+---
+config:
+  flowchart:
+    nodeSpacing: 18
+    rankSpacing: 26
+    padding: 10
+---
+flowchart LR
+    subgraph Clients["Client modules"]
+        Work["AI for Work"]
+        DevOps["AI for DevOps"]
+        Ops["AI for Ops"]
     end
 
-    subgraph Core["EAAF Core · shared governance"]
-        Gateway["Governance Gateway · identity, policies, and limits"]
+    subgraph Core["EAAF Core"]
+        Gateway["Governance Gateway"]
         Audit["Usage and audit"]
-        Retrieval["Department retrieval · current RAG pilot"]
-        Router["Model routing · LiteLLM Proxy"]
+        Retrieval["Department RAG pilot"]
+        Router["LiteLLM Proxy"]
         Gateway --> Audit
         Gateway --> Retrieval
         Gateway --> Router
@@ -39,9 +46,9 @@ flowchart TB
         OpenAI["OpenAI · optional"]
     end
 
-    Work -->|"Scoped Chat API"| Gateway
-    DevOps -.->|"Draft from text"| Gateway
-    Ops -.->|"Explain a diagnosis"| Gateway
+    Work --> Gateway
+    DevOps -.-> Gateway
+    Ops -.-> Gateway
     Router --> Mock
     Router -.-> OpenAI
 
@@ -50,7 +57,7 @@ flowchart TB
     style Providers fill:#f3edf9,stroke:#815ca3,color:#14243a
 ```
 
-Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Core currently performs department retrieval for Work. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
+The Governance Gateway handles application identity, policies, and usage limits. Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Core currently performs department retrieval for Work. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
 
 ## Components and sprint roadmap
 

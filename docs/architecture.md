@@ -1,15 +1,21 @@
 # EAAF Gateway Architecture
 
-## Sprint 1 request path
+## Governed request path
 
 ```mermaid
 flowchart LR
-    Client["Browser · Global, HR, IT, Marketing"] --> Work["EAAF Work portal"]
-    Work -->|Scoped Chat API and application key| Gateway["FastAPI EAAF Gateway / Trust Layer"]
-    Profiles[YAML application profiles] -->|Policies| Gateway
-    Gateway <-->|Limits and audit metadata| Usage[(Local SQLite)]
-    Gateway -->|HTTP with local proxy credential| Proxy[LiteLLM Proxy]
-    Proxy -->|OpenAI-compatible HTTP| Mock[Mock LLM Provider]
+    Work["AI for Work · separate application"] -->|"Application key and scoped Chat API"| Gateway
+
+    subgraph Core["EAAF Core"]
+        Profiles["YAML application policies"] --> Gateway["Governance Gateway"]
+        Gateway <-->|"Limits and audit metadata"| Usage[("Local SQLite")]
+        Gateway -->|"Authorized model alias"| Proxy["LiteLLM Proxy"]
+    end
+
+    Proxy --> Mock["Local mock provider"]
+    Proxy -.-> OpenAI["OpenAI · optional"]
+
+    style Core fill:#e8f6ee,stroke:#37805b,color:#14243a
 ```
 
 - **EAAF Gateway** loads the HR, IT, and Marketing profiles from `config/applications.yaml` at startup. It authenticates the application key and checks the requested alias against that application's allowlist before routing. It forwards only supported request fields and uses its own proxy credential. It returns 502 for upstream failures and 504 for timeouts.

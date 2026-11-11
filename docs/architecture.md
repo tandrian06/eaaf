@@ -1,14 +1,21 @@
 # EAAF Gateway Architecture
 
-## Sprint 1 request path
+## Governed request path
 
 ```mermaid
 flowchart LR
-    Client[HR / IT / Marketing] -->|Chat request and application key| Gateway[FastAPI EAAF Gateway / Trust Layer]
-    Profiles[YAML application profiles] -->|Policies| Gateway
-    Gateway <-->|Limits and audit metadata| Usage[(Local SQLite)]
-    Gateway -->|HTTP with local proxy credential| Proxy[LiteLLM Proxy]
-    Proxy -->|OpenAI-compatible HTTP| Mock[Mock LLM Provider]
+    Work["AI for Work · separate application"] -->|"Application key and scoped Chat API"| Gateway
+
+    subgraph Core["EAAF Core"]
+        Profiles["YAML application policies"] --> Gateway["Governance Gateway"]
+        Gateway <-->|"Limits and audit metadata"| Usage[("Local SQLite")]
+        Gateway -->|"Authorized model alias"| Proxy["LiteLLM Proxy"]
+    end
+
+    Proxy --> Mock["Local mock provider"]
+    Proxy -.-> OpenAI["OpenAI · optional"]
+
+    style Core fill:#e8f6ee,stroke:#37805b,color:#14243a
 ```
 
 - **EAAF Gateway** loads the HR, IT, and Marketing profiles from `config/applications.yaml` at startup. It authenticates the application key and checks the requested alias against that application's allowlist before routing. It forwards only supported request fields and uses its own proxy credential. It returns 502 for upstream failures and 504 for timeouts.
@@ -25,7 +32,7 @@ SQLite stores timestamps, application identifiers, domain, cost center, permitte
 
 ## Sprint 2 Chat client
 
-The Chat client lives in the top-level `chat/` directory beside the `eaaf/` gateway package. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
+The standalone Chat client lives in [EAAF Work](https://github.com/tandrian06/eaaf-work). Work serves the browser assets and forwards scoped Chat requests to Core. Core still bundles a copy in `chat/` for the original local Compose demo. Work forwards the application key and Core verifies it. The current department retrieval stays in Core. One frontend serves Global, HR, IT, and Marketing spaces. Chat submits to `POST /chat/{space}/completions`, which checks that the authenticated application matches the space and then runs the same completion handler as `POST /v1/chat/completions`. Global has its own key, allowlist, and limits. The key and accepted conversation turns are held in page memory and cleared when leaving the space. All authorization, quotas, budget checks, and audit decisions remain in the gateway.
 
 ## Sprint 3 department knowledge
 
@@ -42,3 +49,15 @@ Optional semantic retrieval uses the LiteLLM embeddings endpoint and an in-memor
 For natural-language intake, the CLI calls `POST /v1/chat/completions` with a dedicated application key. The DevOps repository supplies an optional Compose overlay that registers the DevOps application policy and its architecture model alias. The Gateway authenticates the request, enforces the allowlist and usage limits, and records audit metadata. LiteLLM routes the authorized request to OpenAI. The CLI validates the resulting draft and reports open decisions and pattern conflicts.
 
 The DevOps CLI can inspect a prepared Terraform module and generate a module call and input file from reviewed YAML. The [deployment demo](https://github.com/tandrian06/eaaf-deployment-demo) exercises that path locally and through GitHub Actions. Its AWS workflow supports a reviewed plan and a manually triggered apply.
+
+## AI for Ops integration
+
+[AI for Ops](https://github.com/tandrian06/eaaf-ops) diagnoses ECS incidents from JSON exports or live service events and stopped-task data. AWS access uses the operator's read-only AWS CLI profile. The diagnostic rules run in the Ops CLI and cite matching evidence. The CLI can send the report to Core's completion endpoint for an optional model explanation under an authorized application policy.
+
+```mermaid
+flowchart LR
+    ECS["ECS · read-only collection"] --> Ops["AI for Ops"]
+    Capture["Saved ECS exports"] --> Ops
+    Ops --> Report["Finding, evidence, and next check"]
+    Ops -->|"Optional explanation"| Gateway["EAAF Core Gateway"]
+```

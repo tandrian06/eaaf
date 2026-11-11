@@ -14,6 +14,7 @@ class ApplicationPolicy(BaseModel):
     cost_center: str = Field(min_length=1)
     key_env: str = Field(pattern=r"^[A-Z_][A-Z0-9_]*$")
     allowed_models: frozenset[str] = Field(min_length=1)
+    allowed_embedding_models: frozenset[str] = frozenset()
     requests_per_day: int = Field(gt=0, strict=True)
     monthly_budget_cents: int = Field(gt=0, strict=True)
     request_cost_cents: int = Field(gt=0, strict=True)

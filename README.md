@@ -59,7 +59,7 @@ flowchart LR
 
 The Governance Gateway handles application identity, policies, and usage limits. Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Core currently performs department retrieval for Work. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
 
-## Components and sprint roadmap
+## Delivered components
 
 | Component | Role | Delivery |
 | --- | --- | --- |
@@ -67,9 +67,8 @@ The Governance Gateway handles application identity, policies, and usage limits.
 | **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
 | **RAG** | Retrieve excerpts from the authenticated department's fictional Markdown corpus and send them with the question through the Gateway. | **Sprint 3 · local pilot available** |
-| **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
-Sprint 4 describes the intended next step. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
+The current API supports non-streaming text chat completions. Scoped Chat endpoints support optional knowledge retrieval. The agent pilot remains a future cloud automation increment.
 
 ## How we build and validate EAAF
 
@@ -82,7 +81,6 @@ A **sprint** has a demonstrable outcome. An **increment** is a smaller change wi
 | **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
 | **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
 | **3 · RAG pilot** | Search a small local document set by department, attach matching excerpts, and show sources. Move the corpus to editable Markdown files and load it from a manifest. | Verify document isolation, behavior without a matching source, and that a department cannot register a file from another corpus. |
-| **4 · Agent pilot, proposed** | Start with a bounded workflow and a single controlled tool. | Check who can invoke the tool, how approval is enforced, and what is recorded. |
 
 Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
 

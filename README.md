@@ -2,20 +2,29 @@
 
 EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a browser Chat app. It runs against a simulated provider with Docker Compose.
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, a browser Chat app, and a local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional.
+
+## Repositories
+
+| Repository | What it contains |
+| --- | --- |
+| [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, LiteLLM routing, Chat, and department RAG. It governs model calls used to draft architecture from text. |
+| [EAAF DevOps](https://github.com/tandrian06/eaaf-devops) | Architecture intake, validation, and the reusable CLI that generates Terraform module calls and input files. |
+| [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
 
 ## Target architecture
 
 ```mermaid
 flowchart LR
     Chat["Chat App"] --> Gateway["Governance Gateway · Trust Layer"]
-    RAG["RAG Application · planned"] -.-> Gateway
+    RAG["Dedicated RAG Application · planned"] -.-> Gateway
     Agents["Agent Runtime · planned"] -.-> Gateway
     DevOps["AI for DevOps · AWS architecture intake"] -->|HTTP API · dedicated identity| Gateway
     Apps["Other enterprise clients"] -.-> Gateway
 
     Policies["Application policies"] --> Gateway
     Gateway --> Audit["Usage and decision audit"]
+    Gateway --> LocalKnowledge["Local RAG pilot · department corpus"]
     Gateway -->|Authorized model alias| Switcher["Model Switcher · LiteLLM Proxy"]
     Switcher --> Mock["Simulated provider"]
     Switcher -->|Optional configuration| OpenAI["OpenAI"]
@@ -32,14 +41,12 @@ Solid lines show the components wired together in the local demo. Dashed lines s
 | Component | Role | Delivery |
 | --- | --- | --- |
 | **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
-| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for HR, IT, and Marketing. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
+| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
-| **RAG** | Retrieve authorized excerpts from indexed documents and send the grounded generation request through the Gateway. | **Sprint 3 · proposed** |
+| **RAG** | Retrieve excerpts from the authenticated department's fictional Markdown corpus and send them with the question through the Gateway. | **Sprint 3 · local pilot available** |
 | **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
-| **AI for DevOps** | Draft and validate AWS ECS Fargate architecture manifests. Natural-language intake uses the Core Gateway through a dedicated application identity. | **Separate module · intake available.** Terraform generation and AWS sandbox planning are planned. |
-
-AI for DevOps follows its own delivery roadmap in a [separate repository](https://github.com/tandrian06/eaaf-devops). The DevOps checkout supplies the optional local Compose overlay. The standalone YAML validator runs independently of Core. Sprint 3 and Sprint 4 describe the intended Core sequence. The current API supports non-streaming text chat completions.
+Sprint 4 describes the intended next step. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
 
 ## How we build and validate EAAF
 
@@ -51,7 +58,7 @@ A **sprint** has a demonstrable outcome. An **increment** is a smaller change wi
 | --- | --- | --- |
 | **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
 | **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
-| **3 · RAG pilot, proposed** | Start with a small local document set and add retrieval before generation. | Check that the answer uses permitted excerpts and that the model call still passes through the Gateway. |
+| **3 · RAG pilot** | Search a small local document set by department, attach matching excerpts, and show sources. Move the corpus to editable Markdown files and load it from a manifest. | Verify document isolation, behavior without a matching source, and that a department cannot register a file from another corpus. |
 | **4 · Agent pilot, proposed** | Start with a bounded workflow and a single controlled tool. | Check who can invoke the tool, how approval is enforced, and what is recorded. |
 
 Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
@@ -74,20 +81,40 @@ The setup script generates unique keys in the Git-ignored `.env` file. If local 
 | IT | [`/chat/it`](http://127.0.0.1:8000/chat/it) | `EAAF_IT_API_KEY` |
 | Marketing | [`/chat/marketing`](http://127.0.0.1:8000/chat/marketing) | `EAAF_MARKETING_API_KEY` |
 
-The root URL opens Global. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
+The root URL opens the EAAF portal with Global Chat and links to the department apps. Each department has a link back to the portal. Navigation switches spaces without carrying over the key or conversation. The Gateway rejects a valid key from a different space before model routing.
 
-1. Open [HR Chat](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
+1. Open [HR App](http://127.0.0.1:8000/chat/hr) and paste the value of `EAAF_HR_API_KEY` from `.env` into **Application key**.
 2. Send a message with the preselected `eaaf-mock-hr`. The provider replies with `Hello from the EAAF HR mock (eaaf-mock-hr). This response is simulated.`
 3. Open **IT**, enter its key, and send a message. The default `eaaf-mock-it` identifies itself as the IT mock. Global and Marketing likewise identify their own mocks.
-4. To see a policy denial, paste the HR key into IT Chat and send a message. The Gateway returns **HTTP 403** and keeps the draft.
+4. To see a policy denial, paste the HR key into the IT App and send a message. The Gateway returns **HTTP 403** and keeps the draft.
 
 Send a follow-up with the same key to include the previous turns, or select **New chat** to clear them. The browser keeps the key and conversation in page memory and sends them to the local Gateway. The demo binds to loopback and uses synthetic data and local demo credentials. Initial image and dependency downloads require registry access.
+
+### Try department knowledge
+
+In a department App, enter its application key, enable **Use department knowledge**, and send a question. Try **Comment poser des congés ?** in HR, **Comment configurer le VPN ?** in IT, or **Où trouver le logo ?** in Marketing. Open **Sources** under the reply to read the selected excerpts. Global has no department corpus.
+
+The [fictional Markdown corpus](knowledge/) is searched locally with accent-insensitive keywords from the [knowledge manifest](config/knowledge.yaml). Each request uses up to two excerpts from its department. An unmatched question shows an error and skips the provider call. With a mock model, the reply identifies the simulator and the sources show what was retrieved. With optional OpenAI, the model receives the selected excerpts and is instructed to ground its reply in them. Use the fictional corpus and synthetic questions with external providers.
+
+### Add a local knowledge source
+
+1. Add a short UTF-8 Markdown file under `knowledge/hr/`, `knowledge/it/`, or `knowledge/marketing/`. Each file is one source, with a maximum of 4,000 characters.
+2. Register it under the matching department in `config/knowledge.yaml`. Set a unique source ID within that department, a title, search keywords, and a file path relative to the department directory.
+3. Rebuild the Gateway with `docker compose up --build --wait gateway`. If you use the OpenAI overlay, include both Compose files when rebuilding.
+
+The Gateway validates and loads the corpus at startup. Document files stay on the Gateway side. The Chat displays only the excerpts returned for the authorized request.
+
+### Compare keyword and semantic search
+
+With the optional OpenAI mode running, enable **Use department knowledge** in the IT App. Ask **How can I reach company resources from home?** using **Keywords (local)**, then switch to **Semantic search (OpenAI, billed)** and ask again. The semantic mode is designed to retrieve **Remote access and VPN** even when the question omits its keywords. Select the IT mock to compare the sources without making a paid generation call.
+
+Semantic search uses `text-embedding-3-small` through LiteLLM. It sends the question and, on the first semantic request for a department, that department's fictional source text to OpenAI. The Gateway keeps the document vectors in memory until restart and ranks only the authenticated department by cosine similarity. The pilot returns up to two matches above its relevance threshold. Semantic requests reserve the same simulated charge before embedding. An unmatched semantic request can incur an embedding charge and skips generation. Keyword search stays local and remains the default.
 
 ### Application policies
 
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |
 | --- | --- | ---: | ---: |
-| Global | `eaaf-mock` | 50 | $3.00 |
+| Global | `eaaf-mock`, `eaaf-openai-mini` (optional) | 50 | $3.00 |
 | HR | `eaaf-mock-hr`, `eaaf-openai-mini` (optional) | 20 | $1.00 |
 | IT | `eaaf-mock-it`, `eaaf-openai-mini` (optional) | 100 | $10.00 |
 | Marketing | `eaaf-mock-marketing`, `eaaf-openai-mini` (optional) | 50 | $2.00 |
@@ -113,7 +140,7 @@ Add `OPENAI_API_KEY` to the local, Git-ignored `.env` and start with both Compos
 docker compose -f compose.yaml -f compose.openai.yaml up --build --wait
 ```
 
-Open [IT Chat](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. HR, IT, and Marketing authorize it when OpenAI mode is enabled. Global uses its local mock. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
+Open [IT App](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. Global, HR, IT, and Marketing authorize it when OpenAI mode is enabled. Each space still selects its own mock by default. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
 
 The overlay gives only LiteLLM an external network and the provider key. Run `docker compose up --build --wait` with the base configuration to return to mock-only mode. For a future remote deployment, store `OPENAI_API_KEY` as an environment-scoped GitHub Actions secret.
 

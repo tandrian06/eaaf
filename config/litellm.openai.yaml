@@ -8,3 +8,8 @@ model_list:
       api_key: os.environ/OPENAI_API_KEY
       max_tokens: 128
       timeout: 12
+  - model_name: eaaf-knowledge-embedding
+    litellm_params:
+      model: openai/text-embedding-3-small
+      api_key: os.environ/OPENAI_API_KEY
+      timeout: 12

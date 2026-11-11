@@ -32,9 +32,104 @@ def test_chat_space_rejects_another_app_key_before_routing():
     assert client.app.state.usage.report()[0]["decision"] == "chat_space_forbidden"
 
 
+def test_knowledge_context_and_sources_are_scoped_to_hr():
+    def proxy(request):
+        payload = json.loads(request.content)
+        assert "use_knowledge" not in payload
+        context = payload["messages"][0]
+        assert context["role"] == "system"
+        assert "[1] Leave requests" in context["content"]
+        assert "five working days" in context["content"]
+        assert "VPN" not in context["content"]
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    body = {**BODY, "use_knowledge": True, "messages": [
+        {"role": "user", "content": "Quels sont les délais pour les congés et le VPN ?"},
+    ]}
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        response = client.post("/chat/hr/completions", json=body, headers=HR_HEADERS)
+    assert response.status_code == 200
+    sources = response.json()["sources"]
+    assert [source["id"] for source in sources] == ["hr-leave"]
+    assert "keywords" not in sources[0]
+    contents = client.app.state.usage.path.read_bytes()
+    assert b"Quels sont" not in contents
+    assert b"five working days" not in contents
+
+
+def test_semantic_search_ranks_only_hr_and_reuses_document_vectors(monkeypatch):
+    monkeypatch.setenv("EAAF_OPENAI_ENABLED", "true")
+    embedding_inputs = []
+    completions = []
+
+    def proxy(request):
+        payload = json.loads(request.content)
+        if request.url.path == "/v1/embeddings":
+            texts = payload["input"]
+            embedding_inputs.append(texts)
+            assert payload["model"] == "eaaf-knowledge-embedding"
+            assert all("VPN" not in text for text in texts)
+            query = [0, 0, 1] if "astronomy" in texts[0] else [1, 0, 0]
+            vectors = [query, [1, 0, 0], [0, 1, 0]][:len(texts)]
+            return httpx.Response(200, json={"data": [
+                {"index": i, "embedding": vector} for i, vector in enumerate(vectors)
+            ]})
+        completions.append(payload)
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    app = create_app(httpx.MockTransport(proxy))
+    body = {**BODY, "use_knowledge": True, "retrieval": "semantic", "messages": [
+        {"role": "user", "content": "Je voudrais prendre quelques jours pour partir en voyage."},
+    ]}
+    with TestClient(app) as client:
+        response = client.post("/chat/hr/completions", json=body, headers=HR_HEADERS)
+        assert response.status_code == 200
+        assert [source["id"] for source in response.json()["sources"]] == ["hr-leave"]
+        body["messages"][0]["content"] = "Tell me about astronomy."
+        assert client.post("/chat/hr/completions", json=body, headers=HR_HEADERS).status_code == 404
+        assert client.post("/chat/it/completions", json=body, headers=HR_HEADERS).status_code == 403
+
+    assert [len(texts) for texts in embedding_inputs] == [3, 1]
+    assert len(completions) == 1
+    assert "retrieval" not in completions[0]
+    assert "five working days" in completions[0]["messages"][0]["content"]
+    assert any(row["decision"] == "knowledge_no_match" for row in app.state.usage.report())
+
+
+def test_semantic_search_is_disabled_by_default():
+    def proxy(request):
+        pytest.fail("Disabled semantic search reached the proxy")
+
+    body = {**BODY, "use_knowledge": True, "retrieval": "semantic"}
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        assert client.get("/chat/hr/options").json()["semantic"] is False
+        assert client.post("/chat/hr/completions", json=body, headers=HR_HEADERS).status_code == 403
+
+
+@pytest.mark.parametrize("path, headers, model, expected", [
+    ("/chat/hr/completions", {}, "eaaf-mock-hr", 401),
+    ("/chat/it/completions", HR_HEADERS, "eaaf-mock-it", 403),
+    ("/chat/global/completions", {"Authorization": "Bearer test-global"}, "eaaf-mock", 403),
+    ("/v1/chat/completions", HR_HEADERS, "eaaf-mock-hr", 403),
+    ("/chat/hr/completions", HR_HEADERS, "eaaf-mock-hr", 404),
+])
+def test_unavailable_knowledge_stops_before_routing(path, headers, model, expected):
+    def proxy(request):
+        pytest.fail("Unavailable knowledge request reached the proxy")
+
+    body = {"model": model, "use_knowledge": True, "messages": [
+        {"role": "user", "content": "How do I configure the VPN?"},
+    ]}
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        response = client.post(path, json=body, headers=headers)
+    assert response.status_code == expected
+    assert client.app.state.usage.report()[0]["simulated_cost_cents"] == 0
+
+
 @pytest.mark.parametrize("enabled, application, expected", [
     (False, "it", 403),
-    (True, "global", 403),
+    (False, "global", 403),
+    (True, "global", 200),
     (True, "hr", 200),
     (True, "marketing", 200),
     (True, "it", 200),
@@ -50,8 +145,9 @@ def test_openai_alias_requires_opt_in_and_application_policy(monkeypatch, enable
         return httpx.Response(200, json={"object": "chat.completion"})
 
     with TestClient(create_app(httpx.MockTransport(proxy))) as client:
-        models = client.get("/chat/it/options").json()["models"]
-        assert models[0] == {"id": "eaaf-mock-it", "external": False}
+        models = client.get(f"/chat/{application}/options").json()["models"]
+        mock = "eaaf-mock" if application == "global" else f"eaaf-mock-{application}"
+        assert models[0] == {"id": mock, "external": False}
         assert any(entry["id"] == alias for entry in models) == enabled
         response = client.post(
             f"/chat/{application}/completions",

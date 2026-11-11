@@ -9,47 +9,75 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/">EAAF <span>Chat</span></a>
+    <a class="brand" href="/" aria-label="EAAF portal">EAAF <span>Portal</span></a>
     <span class="badge">Local demo</span>
   </header>
-  <main class="layout">
-    <aside class="settings" aria-label="Gateway settings">
-      <p class="eyebrow">Gateway settings</p>
-      <h2>Application access</h2>
-      <label for="application-key">Application key</label>
-      <input id="application-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a bearer token">
-      <p class="muted">Paste the key for this space from your local .env file.</p>
-      <label for="model">Model</label>
-      <select id="model" disabled></select>
-      <p class="muted">Model access depends on the policy for this space.</p>
-      <div class="note">This page keeps the conversation and key in memory. Requests go to the local gateway. Changing the key starts a new conversation.</div>
-    </aside>
-    <section class="chat" aria-labelledby="chat-title">
-      <div class="chat-heading">
-        <div>
-          <p class="eyebrow">Governed chat</p>
-          <h1 id="chat-title">Chat</h1>
+  <main class="page">
+    <header class="page-heading">
+      <a id="back-to-portal" class="back-link" href="/" hidden>← Back to portal</a>
+      <p class="eyebrow">Enterprise AI workspace</p>
+      <h1 id="page-title">EAAF Portal</h1>
+      <p id="portal-intro" class="muted" hidden>Start with the general chat or open a department app.</p>
+    </header>
+    <nav id="departments" class="department-links" aria-label="Department apps" hidden>
+      <a class="department-card" data-space="hr" data-label="HR" href="/chat/hr">
+        <strong>HR App</strong>
+        <span>Human Resources</span>
+      </a>
+      <a class="department-card" data-space="it" data-label="IT" href="/chat/it">
+        <strong>IT App</strong>
+        <span>Information Technology</span>
+      </a>
+      <a class="department-card" data-space="marketing" data-label="Marketing" href="/chat/marketing">
+        <strong>Marketing App</strong>
+        <span>Marketing and communications</span>
+      </a>
+    </nav>
+    <div class="layout">
+      <aside class="settings" aria-label="Gateway settings">
+        <p class="eyebrow">Gateway settings</p>
+        <h2>Application access</h2>
+        <label for="application-key">Application key</label>
+        <input id="application-key" type="password" autocomplete="off" spellcheck="false" placeholder="Enter a bearer token">
+        <p class="muted">Paste the key for this space from your local .env file.</p>
+        <label for="model">Model</label>
+        <select id="model" disabled></select>
+        <p class="muted">Model access depends on the policy for this space.</p>
+        <div class="note">This page keeps the conversation and key in memory. Requests go to the local gateway. Changing the key starts a new conversation.</div>
+      </aside>
+      <section class="chat" aria-labelledby="chat-title">
+        <div class="chat-heading">
+          <div>
+            <p class="eyebrow">Governed chat</p>
+            <h2 id="chat-title">Global Chat</h2>
+          </div>
+          <button id="new-chat" type="button">New chat</button>
         </div>
-        <button id="new-chat" type="button">New chat</button>
-      </div>
-      <nav class="spaces" aria-label="Chat spaces">
-        <a href="/chat/global">Global</a>
-        <a href="/chat/hr">HR</a>
-        <a href="/chat/it">IT</a>
-        <a href="/chat/marketing">Marketing</a>
-      </nav>
-      <p id="empty-state" class="empty">Send a message to see how EAAF handles it. Mock models return a fixed reply. External models send messages to their provider.</p>
-      <ol id="messages" class="messages" aria-label="Conversation messages" aria-live="polite"></ol>
-      <div class="composer">
-        <p id="status" class="status" role="status"></p>
-        <p id="error" class="error" role="alert" hidden></p>
-        <form id="composer">
-          <label for="message">Your message</label>
-          <textarea id="message" rows="3" placeholder="Try: Hello, EAAF." required></textarea>
-          <button id="send" class="primary" type="submit" disabled>Send message</button>
-        </form>
-      </div>
-    </section>
+        <p id="empty-state" class="empty">Send a message to see how EAAF handles it. Mock models return a fixed reply. External models send messages to their provider.</p>
+        <ol id="messages" class="messages" aria-label="Conversation messages" aria-live="polite"></ol>
+        <div class="composer">
+        <div id="knowledge-control" class="knowledge-control" hidden>
+          <label><input id="use-knowledge" type="checkbox"> Use department knowledge</label>
+          <p class="muted">Search fictional documents from this department. Changing mode starts a new conversation.</p>
+          <div id="retrieval-control" hidden>
+            <label for="retrieval">Search method</label>
+            <select id="retrieval">
+              <option value="keyword">Keywords (local)</option>
+              <option value="semantic">Semantic search (OpenAI, billed)</option>
+            </select>
+            <p class="muted">Semantic search sends the question and department documents to OpenAI for embeddings, even with a mock response model.</p>
+          </div>
+        </div>
+          <p id="status" class="status" role="status"></p>
+          <p id="error" class="error" role="alert" hidden></p>
+          <form id="composer">
+            <label for="message">Your message</label>
+            <textarea id="message" rows="3" placeholder="Try: Hello, EAAF." required></textarea>
+            <button id="send" class="primary" type="submit" disabled>Send message</button>
+          </form>
+        </div>
+      </section>
+    </div>
   </main>
 </body>
 </html>

@@ -32,7 +32,7 @@ flowchart LR
     end
 
     subgraph Core["EAAF Core"]
-        Gateway["Governance Gateway · application authentication and policies"]
+        Gateway["Governance Gateway"]
         Audit["Usage and audit"]
         Router["LiteLLM Proxy"]
         Gateway --> Audit

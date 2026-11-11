@@ -47,7 +47,7 @@ def test_chat_page_and_assets_are_served():
             assert "connect-src 'self'" in page.headers["Content-Security-Policy"]
             assert not any(key in page.text for key in keys)
             configuration = client.get(f"/chat/{space}/options").json()
-            assert configuration["knowledge"] == (space != "global")
+            assert configuration["knowledge"] is False
             options = configuration["models"]
             assert options[0] == {"id": alias, "external": False}
             assert [entry["id"] for entry in options if not entry["external"]] == [alias]
@@ -79,27 +79,6 @@ def test_scoped_chat_access(space, application, model, status):
         assert_mock_completion(response.json(), model, MOCKS[space][1])
     else:
         assert response.json()["detail"] == "Application key is not allowed in this chat space"
-
-
-@pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")
-@pytest.mark.parametrize("space, question, source_id", [
-    ("hr", "Comment poser des congés ?", "hr-leave"),
-    ("it", "Comment configurer le VPN ?", "it-vpn"),
-    ("marketing", "Où trouver le logo ?", "marketing-brand"),
-])
-def test_mock_knowledge_returns_department_sources(space, question, source_id):
-    model, label = MOCKS[space]
-    response = httpx.post(
-        f"{os.environ['EAAF_E2E_URL'].rstrip('/')}/chat/{space}/completions",
-        headers={"Authorization": f"Bearer {application_key(space)}"},
-        json={"model": model, "use_knowledge": True, "messages": [{"role": "user", "content": question}]},
-        timeout=20,
-        trust_env=False,
-    )
-    assert response.status_code == 200, response.text
-    result = response.json()
-    assert_mock_completion(result, model, label)
-    assert [source["id"] for source in result["sources"]] == [source_id]
 
 
 @pytest.mark.skipif(not os.getenv("EAAF_E2E_URL"), reason="Requires the running three-service stack")

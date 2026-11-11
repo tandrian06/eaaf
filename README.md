@@ -2,14 +2,14 @@
 
 EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, a browser Chat app, and a local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a bundled browser Chat demo. The standalone Work application runs the local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
 
 ## Repositories
 
 | Repository | What it contains |
 | --- | --- |
-| [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, LiteLLM routing, and the current department RAG backend. It also governs model calls for architecture intake. |
-| [EAAF Work](https://github.com/tandrian06/eaaf-work) | Standalone browser portal and Chat client. It calls Core for scoped Chat and RAG. |
+| [EAAF Core](https://github.com/tandrian06/eaaf) | Governance Gateway, application authentication, usage controls, and LiteLLM routing. It also governs model calls for architecture intake. |
+| [EAAF Work](https://github.com/tandrian06/eaaf-work) | Chat portal and department RAG. It calls Core for authentication, generation, and optional embeddings. |
 | [EAAF DevOps](https://github.com/tandrian06/eaaf-devops) | Architecture intake, validation, and the reusable CLI that generates Terraform module calls and input files. |
 | [EAAF Ops](https://github.com/tandrian06/eaaf-ops) | Read-only ECS incident diagnosis from saved captures or live AWS events. Core can provide an optional explanation. |
 | [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
@@ -26,18 +26,16 @@ config:
 ---
 flowchart LR
     subgraph Clients["Client modules"]
-        Work["AI for Work"]
+        Work["AI for Work · Chat and department RAG"]
         DevOps["AI for DevOps"]
         Ops["AI for Ops"]
     end
 
     subgraph Core["EAAF Core"]
-        Gateway["Governance Gateway"]
+        Gateway["Governance Gateway · application authentication and policies"]
         Audit["Usage and audit"]
-        Retrieval["Department RAG pilot"]
         Router["LiteLLM Proxy"]
         Gateway --> Audit
-        Gateway --> Retrieval
         Gateway --> Router
     end
 
@@ -57,9 +55,9 @@ flowchart LR
     style Providers fill:#f3edf9,stroke:#815ca3,color:#14243a
 ```
 
-The Governance Gateway handles application identity, policies, and usage limits. Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Core currently performs department retrieval for Work. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
+The Governance Gateway handles application identity, policies, and usage limits. Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Work owns document retrieval. Before searching, it asks Core to authenticate the application key and authorize the department and generation model. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
 
-## Components and sprint roadmap
+## Delivered components
 
 | Component | Role | Delivery |
 | --- | --- | --- |
@@ -67,9 +65,8 @@ The Governance Gateway handles application identity, policies, and usage limits.
 | **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
 | **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
 | **RAG** | Retrieve excerpts from the authenticated department's fictional Markdown corpus and send them with the question through the Gateway. | **Sprint 3 · local pilot available** |
-| **Agent Runtime** | Run workflows that call models through the Gateway and enforce separate controls on tool execution and approvals. | **Sprint 4 · proposed** |
 
-Sprint 4 describes the intended next step. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
+The agent pilot remains a future cloud automation increment. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
 
 ## How we build and validate EAAF
 
@@ -82,7 +79,6 @@ A **sprint** has a demonstrable outcome. An **increment** is a smaller change wi
 | **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
 | **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
 | **3 · RAG pilot** | Search a small local document set by department, attach matching excerpts, and show sources. Move the corpus to editable Markdown files and load it from a manifest. | Verify document isolation, behavior without a matching source, and that a department cannot register a file from another corpus. |
-| **4 · Agent pilot, proposed** | Start with a bounded workflow and a single controlled tool. | Check who can invoke the tool, how approval is enforced, and what is recorded. |
 
 Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
 
@@ -115,23 +111,7 @@ Send a follow-up with the same key to include the previous turns, or select **Ne
 
 ### Try department knowledge
 
-In a department App, enter its application key, enable **Use department knowledge**, and send a question. Try **Comment poser des congés ?** in HR, **Comment configurer le VPN ?** in IT, or **Où trouver le logo ?** in Marketing. Open **Sources** under the reply to read the selected excerpts. Global has no department corpus.
-
-The [fictional Markdown corpus](knowledge/) is searched locally with accent-insensitive keywords from the [knowledge manifest](config/knowledge.yaml). Each request uses up to two excerpts from its department. An unmatched question shows an error and skips the provider call. With a mock model, the reply identifies the simulator and the sources show what was retrieved. With optional OpenAI, the model receives the selected excerpts and is instructed to ground its reply in them. Use the fictional corpus and synthetic questions with external providers.
-
-### Add a local knowledge source
-
-1. Add a short UTF-8 Markdown file under `knowledge/hr/`, `knowledge/it/`, or `knowledge/marketing/`. Each file is one source, with a maximum of 4,000 characters.
-2. Register it under the matching department in `config/knowledge.yaml`. Set a unique source ID within that department, a title, search keywords, and a file path relative to the department directory.
-3. Rebuild the Gateway with `docker compose up --build --wait gateway`. If you use the OpenAI overlay, include both Compose files when rebuilding.
-
-The Gateway validates and loads the corpus at startup. Document files stay on the Gateway side. The Chat displays only the excerpts returned for the authorized request.
-
-### Compare keyword and semantic search
-
-With the optional OpenAI mode running, enable **Use department knowledge** in the IT App. Ask **How can I reach company resources from home?** using **Keywords (local)**, then switch to **Semantic search (OpenAI, billed)** and ask again. The semantic mode is designed to retrieve **Remote access and VPN** even when the question omits its keywords. Select the IT mock to compare the sources without making a paid generation call.
-
-Semantic search uses `text-embedding-3-small` through LiteLLM. It sends the question and, on the first semantic request for a department, that department's fictional source text to OpenAI. The Gateway keeps the document vectors in memory until restart and ranks only the authenticated department by cosine similarity. The pilot returns up to two matches above its relevance threshold. Semantic requests reserve the same simulated charge before embedding. An unmatched semantic request can incur an embedding charge and skips generation. Keyword search stays local and remains the default.
+Run [EAAF Work](https://github.com/tandrian06/eaaf-work) alongside Core and open the Work portal on port 8001. Work holds the corpus and retrieves the excerpts. Core authenticates the application key, checks the department and model, and applies quotas, simulated budgets, and audit to generation and optional embedding calls.
 
 ### Application policies
 

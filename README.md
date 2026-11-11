@@ -57,31 +57,6 @@ flowchart LR
 
 The Governance Gateway handles application identity, policies, and usage limits. Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Work owns document retrieval. Before searching, it asks Core to authenticate the application key and authorize the department and generation model. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
 
-## Delivered components
-
-| Component | Role | Delivery |
-| --- | --- | --- |
-| **Governance Gateway** | FastAPI trust layer for application authentication, model allowlists, daily quotas, simulated monthly budgets, and audit metadata. | **Sprint 1 · available** |
-| **Model Switcher** | LiteLLM Proxy routes each space's mock alias to the local simulator. An optional configuration adds OpenAI for all four spaces. | **Sprint 1 · alias routing available.** The Chat demo adds per-space mocks and optional OpenAI. |
-| **Chat App** | Browser client for selecting a model, keeping conversation turns in memory, and showing responses or policy denials. | **Sprint 2 · available** |
-| **RAG** | Retrieve excerpts from the authenticated department's fictional Markdown corpus and send them with the question through the Gateway. | **Sprint 3 · local pilot available** |
-
-The agent pilot remains a future cloud automation increment. The current API supports non-streaming text chat completions and the scoped Chat endpoints support optional knowledge retrieval.
-
-## How we build and validate EAAF
-
-The **MVP** answers one question. Can an enterprise application make a governed model call and see why the Gateway allowed or refused it? A request, its policy decision, and the corresponding usage record are enough to exercise that flow. The simulated provider keeps the result reproducible and removes the need for cloud credentials during validation.
-
-A **sprint** has a demonstrable outcome. An **increment** is a smaller change within a sprint that can be run and tested with the existing stack.
-
-| Sprint | Increments | What we verify |
-| --- | --- | --- |
-| **1 · Gateway MVP** | Route a request through the Gateway and LiteLLM to the mock. Add application keys and model allowlists. Then add quotas, simulated budgets, and audit. | Verify the full request path first. Then check that denials stop before routing, limits hold under concurrent calls, and the audit excludes message content. |
-| **2 · Chat demo** | Add a browser client over the existing HTTP API. Add conversation history, model selection, and visible policy errors. | Use the same model with two application keys and observe different outcomes. Verify that changing keys clears the conversation. |
-| **3 · RAG pilot** | Search a small local document set by department, attach matching excerpts, and show sources. Move the corpus to editable Markdown files and load it from a manifest. | Verify document isolation, behavior without a matching source, and that a department cannot register a file from another corpus. |
-
-Each delivered increment is exercised locally with Compose, then checked in GitHub Actions before merge. A simulated provider and synthetic inputs let us verify routing, policy, and failure behavior before connecting real providers or data. The local stack also gives reviewers a reproducible way to try the same scenario. For a larger deployment, the HTTP boundaries let us package and scale each component separately when its workload calls for it.
-
 ## Run the local demo
 
 With Python 3.12 and Docker Compose v2, run from the repository root.
@@ -172,6 +147,18 @@ Docker Compose launches the demo as one stack. Chat uses the Gateway's HTTP API,
 ### Credentials for remote deployment
 
 Store remote application keys and the LiteLLM master key as GitHub Actions secrets scoped to the target deployment environment. A future deployment workflow will pass them to the corresponding services as runtime environment variables. Real provider keys belong in that same secret store and are passed only to the service that calls the provider. The local mock key is used only when deploying the mock stack. Keep the Chat assets independent of these secrets.
+
+## Delivery history
+
+Each sprint delivered a testable outcome in small increments. The local mock made it possible to verify each stage without cloud credentials.
+
+| Sprint | Delivered and verified |
+| --- | --- |
+| 1 · Gateway MVP | Routed a model request through Core and LiteLLM to the local mock, then added application authentication, model policies, quotas, simulated budgets, and metadata-only audit. |
+| 2 · Chat demo | Added a browser client to exercise model selection, conversation history, and policy denials across application identities. The standalone Chat portal now lives in EAAF Work. |
+| 3 · Department RAG | Added retrieval and source display for isolated department corpora. EAAF Work now owns the documents and search, while Core governs model calls. |
+
+The agent pilot remains a future cloud automation increment.
 
 ## Tests
 

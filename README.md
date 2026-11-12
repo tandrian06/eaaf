@@ -12,7 +12,9 @@ The current version is a self-contained local demo. It includes the Governance G
 | [EAAF Work](https://github.com/tandrian06/eaaf-work) | Chat portal and department RAG. It calls Core for authentication, generation, and optional embeddings. |
 | [EAAF DevOps](https://github.com/tandrian06/eaaf-devops) | Architecture intake, validation, and the reusable CLI that generates Terraform module calls and input files. |
 | [EAAF Ops](https://github.com/tandrian06/eaaf-ops) | Read-only ECS incident diagnosis from saved captures or live AWS events. Core can provide an optional explanation. |
-| [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
+| [EAAF Deployment Demo](https://github.com/tandrian06/eaaf-deployment-demo) **(private · GitHub access required)** | A working example that takes reviewed YAML and a prepared Terraform module through generation, PR review, and an optional AWS Fargate deployment. |
+
+GitHub returns HTTP 404 for the private deployment demo when your account does not have access.
 
 ## Architecture
 

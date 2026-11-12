@@ -11,7 +11,7 @@ applications:
     domain: Human Resources
     cost_center: DEMO-HR
     key_env: EAAF_HR_API_KEY
-    allowed_models: [eaaf-mock-hr, eaaf-openai-mini]
+    allowed_models: [eaaf-mock-hr, eaaf-openai-mini, eaaf-claude-haiku]
     allowed_embedding_models: [eaaf-knowledge-embedding]
     requests_per_day: 20
     monthly_budget_cents: 100

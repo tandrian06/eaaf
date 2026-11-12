@@ -1,0 +1,9 @@
+model_list:
+  - model_name: eaaf-claude-haiku
+    litellm_params:
+      model: anthropic/claude-haiku-5-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+      max_tokens: 256
+      thinking:
+        type: disabled
+      timeout: 12

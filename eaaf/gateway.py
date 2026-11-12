@@ -19,6 +19,11 @@ DEFAULT_APPLICATIONS = Path(__file__).resolve().parents[1] / "config" / "applica
 CHAT_ASSETS = Path(__file__).resolve().parents[1] / "chat"
 OPENAI_ALIAS = "eaaf-openai-mini"
 EMBEDDING_ALIAS = "eaaf-knowledge-embedding"
+EXTERNAL_MODEL_PROVIDERS = {
+    OPENAI_ALIAS: "OpenAI",
+    EMBEDDING_ALIAS: "OpenAI",
+    "eaaf-claude-haiku": "Anthropic",
+}
 application_bearer = HTTPBearer(auto_error=False, scheme_name="Application key")
 
 
@@ -85,9 +90,10 @@ async def authorize(request: Request, application: Application, model: str, *, e
     if model not in allowed:
         await run_in_threadpool(usage.record_denial, "model_forbidden", 403, application)
         raise HTTPException(403, "Model is not allowed for this application")
-    if model in {OPENAI_ALIAS, EMBEDDING_ALIAS} and not request.app.state.openai_enabled:
+    provider = EXTERNAL_MODEL_PROVIDERS.get(model)
+    if provider and provider not in request.app.state.enabled_providers:
         await run_in_threadpool(usage.record_denial, "model_disabled", 403, application)
-        raise HTTPException(403, "OpenAI mode is disabled")
+        raise HTTPException(403, f"{provider} mode is disabled")
 
 
 async def reserve(usage, application, model):
@@ -107,7 +113,10 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
         app.state.chat_spaces = {
             application.name: application.policy for application in app.state.applications.values()
         }
-        app.state.openai_enabled = os.environ.get("EAAF_OPENAI_ENABLED") == "true"
+        app.state.enabled_providers = {
+            provider for provider in set(EXTERNAL_MODEL_PROVIDERS.values())
+            if os.environ.get(f"EAAF_{provider.upper()}_ENABLED") == "true"
+        }
         proxy_key = os.environ["LITELLM_MASTER_KEY"]
         if not proxy_key.startswith("sk-") or len(proxy_key) <= 3:
             raise ValueError("LITELLM_MASTER_KEY must start with sk- and contain a key")
@@ -163,13 +172,14 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
         if policy is None:
             raise HTTPException(404, "Chat space not found")
         models = [
-            {"id": alias, "external": alias == OPENAI_ALIAS}
-            for alias in sorted(policy.allowed_models)
-            if alias != OPENAI_ALIAS or request.app.state.openai_enabled
+            {"id": alias, "external": alias in EXTERNAL_MODEL_PROVIDERS}
+            for alias in sorted(policy.allowed_models, key=lambda alias: (alias in EXTERNAL_MODEL_PROVIDERS, alias))
+            if alias not in EXTERNAL_MODEL_PROVIDERS
+            or EXTERNAL_MODEL_PROVIDERS[alias] in request.app.state.enabled_providers
         ]
         return JSONResponse(
             {"models": models, "knowledge": False, "semantic": False,
-             "embeddings": EMBEDDING_ALIAS in policy.allowed_embedding_models and request.app.state.openai_enabled},
+             "embeddings": EMBEDDING_ALIAS in policy.allowed_embedding_models and EXTERNAL_MODEL_PROVIDERS[EMBEDDING_ALIAS] in request.app.state.enabled_providers},
             headers={"Cache-Control": "no-store"},
         )
 

@@ -2,7 +2,7 @@
 
 EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a bundled browser Chat demo. The standalone Work application runs the local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a bundled browser Chat demo. The standalone Work application runs the local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI and Anthropic are optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
 
 ## Repositories
 
@@ -44,6 +44,7 @@ flowchart LR
     subgraph Providers["Model providers"]
         Mock["Local mock"]
         OpenAI["OpenAI · optional"]
+        Anthropic["Anthropic · Claude"]
     end
 
     Work --> Gateway
@@ -51,6 +52,7 @@ flowchart LR
     Ops -.-> Gateway
     Router --> Mock
     Router -.-> OpenAI
+    Router -.-> Anthropic
 
     style Clients fill:#eaf2ff,stroke:#5679ae,color:#14243a
     style Core fill:#e8f6ee,stroke:#37805b,color:#14243a
@@ -95,7 +97,7 @@ Run [EAAF Work](https://github.com/tandrian06/eaaf-work) alongside Core and open
 | Application | Allowed models | Requests per UTC day | Simulated monthly budget |
 | --- | --- | ---: | ---: |
 | Global | `eaaf-mock`, `eaaf-openai-mini` (optional) | 50 | $3.00 |
-| HR | `eaaf-mock-hr`, `eaaf-openai-mini` (optional) | 20 | $1.00 |
+| HR | `eaaf-mock-hr`, `eaaf-openai-mini` and `eaaf-claude-haiku` (optional) | 20 | $1.00 |
 | IT | `eaaf-mock-it`, `eaaf-openai-mini` (optional) | 100 | $10.00 |
 | Marketing | `eaaf-mock-marketing`, `eaaf-openai-mini` (optional) | 50 | $2.00 |
 
@@ -123,6 +125,22 @@ docker compose -f compose.yaml -f compose.openai.yaml up --build --wait
 Open [IT App](http://127.0.0.1:8000/chat/it), paste the IT application key, and select `eaaf-openai-mini (external, billed)`. LiteLLM routes the alias to OpenAI's `gpt-4.1-mini`. Global, HR, IT, and Marketing authorize it when OpenAI mode is enabled. Each space still selects its own mock by default. Use synthetic input for the demo. OpenAI receives the messages and bills the project. The EAAF usage report still uses the simulated per-call cost.
 
 The overlay gives only LiteLLM an external network and the provider key. Run `docker compose up --build --wait` with the base configuration to return to mock-only mode. For a future remote deployment, store `OPENAI_API_KEY` as an environment-scoped GitHub Actions secret.
+
+### Optional Anthropic mode
+
+Add `ANTHROPIC_API_KEY` to Core's local, Git-ignored `.env` and start the Anthropic overlay. LiteLLM uses the key to call the Claude API.
+
+```powershell
+docker compose -f compose.yaml -f compose.anthropic.yaml up --build --wait
+```
+
+To enable both providers, set both API keys and load the combined overlay last.
+
+```powershell
+docker compose -f compose.yaml -f compose.openai.yaml -f compose.anthropic.yaml -f compose.openai-anthropic.yaml up --build --wait
+```
+
+The alias `eaaf-claude-haiku` routes to Claude Haiku 5.5 and is allowed for HR in the demo policy. Open HR in EAAF Work, enter the HR application key, and select `eaaf-claude-haiku`. With **Use department knowledge** enabled, ask **Comment poser des congés ?**. The demo returns a French answer with the `hr-leave` source. With department knowledge enabled, use keyword search to compare OpenAI and Claude against the same local documents. Work sends the question and selected excerpts to the configured provider for generation. Semantic search still uses the optional OpenAI embeddings alias. The mock remains available in both modes.
 
 ### Usage and audit
 

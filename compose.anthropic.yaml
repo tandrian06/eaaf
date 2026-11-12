@@ -1,0 +1,16 @@
+services:
+  gateway:
+    environment:
+      EAAF_ANTHROPIC_ENABLED: "true"
+
+  litellm:
+    command: ["--config", /app/eaaf-anthropic.yaml, "--host", 0.0.0.0, "--port", "4000"]
+    environment:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in .env to enable Anthropic}"
+    volumes:
+      - ./config/litellm.anthropic.yaml:/app/eaaf-anthropic.yaml:ro
+      - ./config/litellm.anthropic-models.yaml:/app/eaaf-anthropic-models.yaml:ro
+    networks: [backend, provider-egress]
+
+networks:
+  provider-egress:

@@ -9,6 +9,7 @@ services:
       OPENAI_API_KEY: "${OPENAI_API_KEY:?Set OPENAI_API_KEY in .env to enable OpenAI}"
     volumes:
       - ./config/litellm.openai.yaml:/app/eaaf-openai.yaml:ro
+      - ./config/litellm.openai-models.yaml:/app/eaaf-openai-models.yaml:ro
     networks: [backend, provider-egress]
 
 networks:

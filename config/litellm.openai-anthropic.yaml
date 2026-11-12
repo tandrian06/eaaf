@@ -1,0 +1,4 @@
+include:
+  - eaaf-config.yaml
+  - eaaf-openai-models.yaml
+  - eaaf-anthropic-models.yaml

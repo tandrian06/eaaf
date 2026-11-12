@@ -1,0 +1,5 @@
+services:
+  litellm:
+    command: ["--config", /app/eaaf-openai-anthropic.yaml, "--host", 0.0.0.0, "--port", "4000"]
+    volumes:
+      - ./config/litellm.openai-anthropic.yaml:/app/eaaf-openai-anthropic.yaml:ro

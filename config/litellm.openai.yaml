@@ -1,15 +1,3 @@
 include:
   - eaaf-config.yaml
-
-model_list:
-  - model_name: eaaf-openai-mini
-    litellm_params:
-      model: openai/gpt-4.1-mini
-      api_key: os.environ/OPENAI_API_KEY
-      max_tokens: 128
-      timeout: 12
-  - model_name: eaaf-knowledge-embedding
-    litellm_params:
-      model: openai/text-embedding-3-small
-      api_key: os.environ/OPENAI_API_KEY
-      timeout: 12
+  - eaaf-openai-models.yaml

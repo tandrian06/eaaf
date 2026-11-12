@@ -14,6 +14,7 @@ HR_HEADERS = {"Authorization": "Bearer test-hr"}
 @pytest.fixture(autouse=True)
 def application_keys(monkeypatch, tmp_path):
     monkeypatch.delenv("EAAF_OPENAI_ENABLED", raising=False)
+    monkeypatch.delenv("EAAF_ANTHROPIC_ENABLED", raising=False)
     monkeypatch.setenv("EAAF_GLOBAL_API_KEY", "test-global")
     monkeypatch.setenv("EAAF_HR_API_KEY", "test-hr")
     monkeypatch.setenv("EAAF_IT_API_KEY", "test-it")
@@ -110,6 +111,37 @@ def test_openai_alias_requires_opt_in_and_application_policy(monkeypatch, enable
         )
     assert response.status_code == expected
     assert calls == ([alias] if expected == 200 else [])
+
+
+@pytest.mark.parametrize("anthropic, openai", [(False, False), (True, False), (False, True), (True, True)])
+def test_anthropic_is_opt_in_and_scoped_to_hr(monkeypatch, anthropic, openai):
+    monkeypatch.setenv("EAAF_ANTHROPIC_ENABLED", str(anthropic).lower())
+    monkeypatch.setenv("EAAF_OPENAI_ENABLED", str(openai).lower())
+    alias = "eaaf-claude-haiku"
+    calls = []
+
+    def proxy(request):
+        assert request.url.path == "/v1/chat/completions"
+        calls.append(json.loads(request.content)["model"])
+        return httpx.Response(200, json={"object": "chat.completion"})
+
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        options = client.get("/chat/hr/options").json()
+        assert options["models"][0] == {"id": "eaaf-mock-hr", "external": False}
+        assert ({"id": alias, "external": True} in options["models"]) == anthropic
+        assert any(model["id"] == "eaaf-openai-mini" for model in options["models"]) == openai
+        assert options["embeddings"] == openai
+        assert all(model["id"] != alias for model in client.get("/chat/it/options").json()["models"])
+        body = {**BODY, "model": alias}
+        it_headers = {"Authorization": "Bearer test-it"}
+        assert client.post("/chat/it/completions", json=body, headers=it_headers).status_code == 403
+        response = client.post("/chat/hr/authorize", json={"model": alias}, headers=HR_HEADERS)
+        assert response.status_code == (204 if anthropic else 403)
+        response = client.post("/chat/hr/completions", json=body, headers=HR_HEADERS)
+        assert response.status_code == (200 if anthropic else 403)
+        if not anthropic:
+            assert response.json()["detail"] == "Anthropic mode is disabled"
+    assert calls == ([alias] if anthropic else [])
 
 
 def test_forwards_completion_to_proxy():

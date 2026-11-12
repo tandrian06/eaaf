@@ -16,6 +16,10 @@ The current version is a self-contained local demo. It includes the Governance G
 
 GitHub returns HTTP 404 for the private deployment demo when your account does not have access.
 
+## EAAF Core on AWS
+
+The AWS PoC packages the existing Governance Gateway, LiteLLM, and mock provider into one ECS Fargate task. It uses ephemeral SQLite and a Session Manager tunnel so local EAAF Work can reach the Gateway. The repository includes Terraform, IAM examples, and the validated deployment and test procedure. [EAAF Core AWS PoC](https://github.com/tandrian06/eaaf-core-aws-poc) **(private · GitHub access required)**.
+
 ## Architecture
 
 ```mermaid

@@ -18,46 +18,9 @@ GitHub returns HTTP 404 for the private deployment demo when your account does n
 
 ## Architecture
 
-```mermaid
----
-config:
-  flowchart:
-    nodeSpacing: 18
-    rankSpacing: 26
-    padding: 10
----
-flowchart LR
-    subgraph Clients["Client modules"]
-        Work["AI for Work · Chat and department RAG"]
-        DevOps["AI for DevOps"]
-        Ops["AI for Ops"]
-    end
+[![EAAF Core architecture showing its client modules, Governance Gateway, LiteLLM, and model providers](docs/core-architecture.svg)](docs/core-architecture.svg)
 
-    subgraph Core["EAAF Core"]
-        Gateway["Governance Gateway"]
-        Audit["Usage and audit"]
-        Router["LiteLLM Proxy"]
-        Gateway --> Audit
-        Gateway --> Router
-    end
-
-    subgraph Providers["Model providers"]
-        Mock["Local mock"]
-        OpenAI["OpenAI · optional"]
-        Anthropic["Anthropic · Claude"]
-    end
-
-    Work --> Gateway
-    DevOps -.-> Gateway
-    Ops -.-> Gateway
-    Router --> Mock
-    Router -.-> OpenAI
-    Router -.-> Anthropic
-
-    style Clients fill:#eaf2ff,stroke:#5679ae,color:#14243a
-    style Core fill:#e8f6ee,stroke:#37805b,color:#14243a
-    style Providers fill:#f3edf9,stroke:#815ca3,color:#14243a
-```
+[Mermaid source](docs/core-architecture.mmd)
 
 The Governance Gateway handles application identity, policies, and usage limits. Solid arrows show the standard request path and Core's internal dependencies. Dashed arrows show optional calls. Work can run independently on port 8001 and uses Core on port 8000. Work owns document retrieval. Before searching, it asks Core to authenticate the application key and authorize the department and generation model. DevOps can generate Terraform from reviewed YAML locally, and Ops can diagnose ECS events locally. Both call Core only when requesting model assistance.
 

@@ -1,0 +1,39 @@
+---
+config:
+  htmlLabels: false
+  flowchart:
+    nodeSpacing: 18
+    rankSpacing: 26
+    padding: 10
+---
+flowchart LR
+    subgraph Clients["Client modules"]
+        Work["AI for Work · Chat and department RAG"]
+        DevOps["AI for DevOps"]
+        Ops["AI for Ops"]
+    end
+
+    subgraph Core["EAAF Core"]
+        Gateway["Governance Gateway"]
+        Audit["Usage and audit"]
+        Router["LiteLLM Proxy"]
+        Gateway --> Audit
+        Gateway --> Router
+    end
+
+    subgraph Providers["Model providers"]
+        Mock["Local mock"]
+        OpenAI["OpenAI · optional"]
+        Anthropic["Anthropic · Claude"]
+    end
+
+    Work --> Gateway
+    DevOps -.-> Gateway
+    Ops -.-> Gateway
+    Router --> Mock
+    Router -.-> OpenAI
+    Router -.-> Anthropic
+
+    style Clients fill:#eaf2ff,stroke:#5679ae,color:#14243a
+    style Core fill:#e8f6ee,stroke:#37805b,color:#14243a
+    style Providers fill:#f3edf9,stroke:#815ca3,color:#14243a

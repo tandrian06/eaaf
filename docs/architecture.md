@@ -59,3 +59,18 @@ flowchart LR
     Ops --> Report["Finding, evidence, and next check"]
     Ops -->|"Optional explanation"| Gateway["EAAF Core Gateway"]
 ```
+
+## AWS deployment proof of concept
+
+The [EAAF Core AWS PoC](https://github.com/tandrian06/eaaf-core-aws-poc) is a private repository containing Terraform, IAM examples, and deployment instructions. It packages the existing Gateway, LiteLLM, and mock provider into a single Fargate task. EAAF Work runs locally and reaches the Gateway through Session Manager. Core uses ephemeral SQLite for governance and audit in the PoC.
+
+```mermaid
+flowchart LR
+    Work["EAAF Work · local"] --> Tunnel["Session Manager tunnel"]
+    Tunnel --> Gateway
+    subgraph Task["AWS Fargate · one task"]
+        Gateway["Governance Gateway"] --> Proxy["LiteLLM"]
+        Proxy --> Mock["Mock provider"]
+        Gateway --- Store[("Ephemeral SQLite")]
+    end
+```

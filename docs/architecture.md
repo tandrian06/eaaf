@@ -14,13 +14,13 @@ flowchart LR
 
     Proxy --> Mock["Local mock provider"]
     Proxy -.-> OpenAI["OpenAI · optional"]
-    Proxy -.-> Anthropic["Anthropic · optional"]
+    Proxy -.-> Anthropic["Anthropic · Claude"]
 
     style Core fill:#e8f6ee,stroke:#37805b,color:#14243a
 ```
 
 - **EAAF Gateway** loads the HR, IT, and Marketing profiles from `config/applications.yaml` at startup. It authenticates the application key and checks the requested alias against that application's allowlist before routing. It forwards only supported request fields and uses its own proxy credential. It returns 502 for upstream failures and 504 for timeouts.
-- **LiteLLM Proxy** routes the four space-specific mock aliases to one local provider using `config/litellm.yaml`. The optional OpenAI overlay adds a real model for Global, HR, IT, and Marketing. The independent Anthropic overlay adds Claude Haiku for the HR application. Core checks provider activation and the application allowlist for each request. Provider API keys are supplied only to LiteLLM. The Gateway and Proxy share a master key supplied through their runtime environment. Local keys are generated in the Git-ignored `.env` file.
+- **LiteLLM Proxy** routes the four space-specific mock aliases to one local provider using `config/litellm.yaml`. The optional OpenAI overlay adds a real model for Global, HR, IT, and Marketing. The independent Anthropic overlay adds Claude Haiku 5.5 for the HR application. LiteLLM disables adaptive thinking for this chat alias and caps the response at 256 tokens. Core checks provider activation and the application allowlist for each request. Provider API keys are supplied only to LiteLLM. The Gateway and Proxy share a master key supplied through their runtime environment. Local keys are generated in the Git-ignored `.env` file.
 - **Mock LLM Provider** generates a unique completion ID, fixed simulated token counts, and a reply that names its space and model alias. It does not need any model weights or external services.
 
 Compose exposes only the gateway on `127.0.0.1:8000`. LiteLLM and the mock are reachable on an internal Compose network. The gateway health endpoint reports process availability. The end-to-end test verifies all three services together.

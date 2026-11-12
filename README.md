@@ -2,7 +2,7 @@
 
 EAAF is an open-source framework for building enterprise AI applications around a shared governance layer. The goal is to give Chat, retrieval-augmented generation (RAG), and agents a common way to access models under application-specific policies.
 
-The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a bundled browser Chat demo. The standalone Work application runs the local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI is optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
+The current version is a self-contained local demo. It includes the Governance Gateway, model selection and routing, and a bundled browser Chat demo. The standalone Work application runs the local RAG pilot. It runs against a simulated provider with Docker Compose. OpenAI and Anthropic are optional. The browser application can also run independently from the [EAAF Work repository](https://github.com/tandrian06/eaaf-work).
 
 ## Repositories
 
@@ -44,7 +44,7 @@ flowchart LR
     subgraph Providers["Model providers"]
         Mock["Local mock"]
         OpenAI["OpenAI · optional"]
-        Anthropic["Anthropic · optional"]
+        Anthropic["Anthropic · Claude"]
     end
 
     Work --> Gateway
@@ -140,7 +140,7 @@ To enable both providers, set both API keys and load the combined overlay last.
 docker compose -f compose.yaml -f compose.openai.yaml -f compose.anthropic.yaml -f compose.openai-anthropic.yaml up --build --wait
 ```
 
-The alias `eaaf-claude-haiku` routes to Claude Haiku 5.5 and is allowed for HR in the demo policy. Open HR in EAAF Work, enter its application key, and select the Claude alias. With department knowledge enabled, use keyword search to compare OpenAI and Claude against the same local documents. Work sends the question and selected excerpts to the configured provider for generation. Semantic search still uses the optional OpenAI embeddings alias. The mock remains available in both modes.
+The alias `eaaf-claude-haiku` routes to Claude Haiku 5.5 and is allowed for HR in the demo policy. Open HR in EAAF Work, enter the HR application key, and select `eaaf-claude-haiku`. With **Use department knowledge** enabled, ask **Comment poser des congés ?**. The demo returns a French answer with the `hr-leave` source. With department knowledge enabled, use keyword search to compare OpenAI and Claude against the same local documents. Work sends the question and selected excerpts to the configured provider for generation. Semantic search still uses the optional OpenAI embeddings alias. The mock remains available in both modes.
 
 ### Usage and audit
 

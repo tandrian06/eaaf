@@ -13,6 +13,7 @@ HR_HEADERS = {"Authorization": "Bearer test-hr"}
 
 @pytest.fixture(autouse=True)
 def application_keys(monkeypatch, tmp_path):
+    monkeypatch.delenv("EAAF_CHAT_UI_ENABLED", raising=False)
     monkeypatch.delenv("EAAF_OPENAI_ENABLED", raising=False)
     monkeypatch.delenv("EAAF_ANTHROPIC_ENABLED", raising=False)
     monkeypatch.setenv("EAAF_GLOBAL_API_KEY", "test-global")
@@ -269,3 +270,22 @@ def test_audit_retains_metadata_and_excludes_request_and_response_content():
     contents = app.state.usage.path.read_bytes()
     for secret in (b"private-prompt-marker", b"private-completion-marker", b"private-model-marker", b"test-hr"):
         assert secret not in contents
+
+
+def test_api_mode_keeps_work_contract_and_hides_bundled_ui(monkeypatch):
+    monkeypatch.setenv("EAAF_CHAT_UI_ENABLED", "false")
+
+    def proxy(request):
+        return httpx.Response(200, json={
+            "object": "chat.completion",
+            "choices": [{"message": {"role": "assistant", "content": "HR mock"}}],
+        })
+
+    with TestClient(create_app(httpx.MockTransport(proxy))) as client:
+        for path in ("/", "/chat/hr", "/chat-assets/chat.css"):
+            assert client.get(path, follow_redirects=False).status_code == 404
+        assert client.get("/healthz").status_code == 200
+        assert client.get("/chat/hr/options").status_code == 200
+        assert client.post("/chat/hr/authorize", json={"model": "eaaf-mock-hr"}, headers=HR_HEADERS).status_code == 204
+        assert client.post("/chat/hr/completions", json=BODY).status_code == 401
+        assert client.post("/chat/hr/completions", json=BODY, headers=HR_HEADERS).status_code == 200

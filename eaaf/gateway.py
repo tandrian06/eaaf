@@ -133,30 +133,31 @@ def create_app(transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
             yield
 
     app = FastAPI(title="EAAF Governance Gateway", lifespan=lifespan)
-    app.mount("/chat-assets", StaticFiles(directory=CHAT_ASSETS), name="chat-assets")
+    if os.getenv("EAAF_CHAT_UI_ENABLED", "true").lower() == "true":
+        app.mount("/chat-assets", StaticFiles(directory=CHAT_ASSETS), name="chat-assets")
 
-    @app.get("/", include_in_schema=False)
-    async def home() -> RedirectResponse:
-        return RedirectResponse("/chat/global")
+        @app.get("/", include_in_schema=False)
+        async def home() -> RedirectResponse:
+            return RedirectResponse("/chat/global")
 
-    @app.get("/chat/{space}", include_in_schema=False, response_model=None)
-    async def chat(space: str, request: Request) -> FileResponse | RedirectResponse:
-        canonical = space.lower()
-        if canonical not in request.app.state.chat_spaces:
-            raise HTTPException(404, "Chat space not found")
-        if space != canonical:
-            return RedirectResponse(f"/chat/{canonical}")
-        return FileResponse(
-            CHAT_ASSETS / "index.html",
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Security-Policy": (
-                    "default-src 'none'; script-src 'self'; style-src 'self'; "
-                    "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
-                ),
-                "Referrer-Policy": "no-referrer",
-            },
-        )
+        @app.get("/chat/{space}", include_in_schema=False, response_model=None)
+        async def chat(space: str, request: Request) -> FileResponse | RedirectResponse:
+            canonical = space.lower()
+            if canonical not in request.app.state.chat_spaces:
+                raise HTTPException(404, "Chat space not found")
+            if space != canonical:
+                return RedirectResponse(f"/chat/{canonical}")
+            return FileResponse(
+                CHAT_ASSETS / "index.html",
+                headers={
+                    "Cache-Control": "no-store",
+                    "Content-Security-Policy": (
+                        "default-src 'none'; script-src 'self'; style-src 'self'; "
+                        "connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
+                    ),
+                    "Referrer-Policy": "no-referrer",
+                },
+            )
 
     @app.exception_handler(sqlite3.Error)
     async def usage_unavailable(request: Request, exc: sqlite3.Error) -> JSONResponse:

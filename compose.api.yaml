@@ -1,0 +1,6 @@
+services:
+  gateway:
+    environment:
+      EAAF_CHAT_UI_ENABLED: "false"
+    ports: !override
+      - "${EAAF_GATEWAY_BIND_ADDRESS:-127.0.0.1}:${EAAF_GATEWAY_PORT:-8000}:8000"

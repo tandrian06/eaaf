@@ -164,3 +164,27 @@ docker compose down
 GitHub Actions generates temporary keys for each CI run, builds the Compose stack, and runs the same suite. CI uses the simulated provider.
 
 See [Architecture](docs/architecture.md) for implementation details. EAAF code is licensed under the [MIT License](LICENSE). Third-party components are distributed under their own terms.
+
+## Deploy Core independently
+
+Use the API overlay when a separate application serves the browser interface.
+
+~~~powershell
+docker compose -f compose.yaml -f compose.api.yaml up --build --wait
+~~~
+
+The overlay disables the bundled browser pages and assets using
+EAAF_CHAT_UI_ENABLED=false. The default Compose demonstration continues to
+serve its bundled interface. Core retains the scoped options, authorization,
+completion and embedding APIs consumed by EAAF Work.
+
+The API overlay binds to 127.0.0.1:8000 by default. Set
+EAAF_GATEWAY_BIND_ADDRESS and EAAF_GATEWAY_PORT to select the host binding
+and port. Use the VM's private address and a restricted network path when
+connecting a remote client. Configure transport encryption for a remote
+deployment. SQLite remains a single-writer store.
+
+EAAF Work can be started and stopped independently and uses
+EAAF_GATEWAY_URL to find Core. Department documents and retrieval live in
+Work. Provider credentials and the LiteLLM master key belong to Core's
+routing services.
